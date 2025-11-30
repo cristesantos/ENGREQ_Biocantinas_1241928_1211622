@@ -20,8 +20,6 @@ if "api_thread_started" not in st.session_state:
     st.session_state.api_thread_started = True
     st.info("FastAPI iniciado em background na porta 8000")
 
-st.set_page_config(page_title="BioCantinas - Fornecedores")
-
 st.sidebar.title("BioCantinas")
 papel = st.sidebar.radio("Perfil", ["Gestor", "Produtor"])
 
@@ -115,3 +113,7 @@ elif papel == "Gestor":
                 f"Produto: {o['produto']} → ordem de fornecedores: "
                 f"{', '.join(map(str, o['fornecedores_ids']))}"
             )
+<<<<<<< HEAD
+=======
+
+>>>>>>> 23402aad3e4400a02a03e9385dc392cbe0ae5bb8
