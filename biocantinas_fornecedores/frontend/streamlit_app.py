@@ -4,11 +4,34 @@ from datetime import date
 import threading
 import uvicorn
 import sys
+import os
 from pathlib import Path
 
-API_URL = "http://127.0.0.1:8000"
+
+def _resolve_api_url():
+    """Resolve a API URL com precedência: st.secrets -> ENV -> localhost."""
+    url = None
+    # 1) st.secrets (Streamlit Cloud or local .streamlit/secrets.toml)
+    try:
+        url = st.secrets.get("API_URL") if hasattr(st, "secrets") else None
+    except Exception:
+        url = None
+
+    # 2) variável de ambiente
+    if not url:
+        url = os.getenv("API_URL")
+
+    # 3) fallback
+    if not url:
+        url = "http://127.0.0.1:8000"
+
+    return url
+
+
+API_URL = _resolve_api_url()
 
 st.set_page_config(page_title="BioCantinas - Fornecedores")
+st.info(f"API_URL em uso: {API_URL}")
 
 # Tentar importar o app FastAPI localmente; se falhar, desativar servidor embebido
 fastapi_app = None
