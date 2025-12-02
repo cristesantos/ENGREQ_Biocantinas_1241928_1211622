@@ -36,7 +36,7 @@ st.info(f"API_URL em uso: {API_URL}")
 # Tentar importar o app FastAPI localmente; se falhar, desativar servidor embebido
 fastapi_app = None
 try:
-    from biocantinas_fornecedores.backend.app.main import app as fastapi_app
+    from biocantinas.backend.app.main import app as fastapi_app
 except ImportError:
     # Em ambiente de deploy (ex: Streamlit Cloud), a estrutura é diferente
     # Tentar adicionar o path pai ao sys.path e reimportar
@@ -44,7 +44,7 @@ except ImportError:
         backend_path = Path(__file__).parent.parent / "backend"
         if backend_path.exists():
             sys.path.insert(0, str(backend_path.parent))
-            from biocantinas_fornecedores.backend.app.main import app as fastapi_app
+            from biocantinas.backend.app.main import app as fastapi_app
     except ImportError:
         st.warning("⚠️ Servidor FastAPI embebido não disponível. Certifique-se que a API está a correr em http://127.0.0.1:8000")
         fastapi_app = None
