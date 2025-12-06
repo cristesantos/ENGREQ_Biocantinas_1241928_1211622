@@ -22,3 +22,11 @@ class ProdutoFornecedorORM(Base):
     capacidade = Column(Integer, nullable=False)
 
     fornecedor = relationship("FornecedorORM", back_populates="produtos")
+
+class UserORM(Base):
+    __tablename__ = "utilizadores"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    username = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)

@@ -1,12 +1,14 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 from ..dtos.fornecedorDTO import Fornecedor, FornecedorCreate, FornecedorUpdateAprovacao, OrdemFornecedor
 from ..services.fornecedorService import get_services
+from ..auth.jwt import get_current_user, require_role
+from ..dtos.userDTO import User
 
 router = APIRouter(tags=["fornecedores"])
 
 @router.post("/fornecedores", response_model=Fornecedor)
-def criar_fornecedor(fornecedor: FornecedorCreate):
+def criar_fornecedor(fornecedor: FornecedorCreate, user: User = Depends(require_role("PRODUTOR"))):
     svc = get_services()
     return svc.criar_fornecedor(fornecedor)
 
@@ -24,7 +26,7 @@ def obter_fornecedor(fid: int):
     return f
 
 @router.patch("/fornecedores/{fid}/aprovacao", response_model=Fornecedor)
-def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao):
+def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = Depends(require_role("GESTOR"))):
     svc = get_services()
     try:
         return svc.aprovar_fornecedor(fid, body.aprovado)
