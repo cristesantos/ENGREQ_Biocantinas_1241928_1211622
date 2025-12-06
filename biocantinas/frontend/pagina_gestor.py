@@ -89,6 +89,25 @@ def pagina_gestor(API_URL):
                     st.write(f"{idx}. {forn['nome']} — {cap_text}")
                 else:
                     st.write(f"{idx}. {fid} — fornecedor não encontrado")
+        # Botão para mostrar todas as ordens (cada produto com sua lista de fornecedores e capacidades)
+        if st.button("Mostrar todas as ordens"):
+            for o in ordens:
+                with st.expander(f"{o['produto']} ({len(o.get('fornecedores_ids', []))} fornecedores)"):
+                    if not o.get('fornecedores_ids'):
+                        st.write("Nenhum fornecedor para este produto.")
+                        continue
+                    for idx, fid in enumerate(o['fornecedores_ids'], start=1):
+                        forn = id_to_fornecedor.get(fid)
+                        if forn:
+                            capacidade = None
+                            for p in forn.get('produtos', []):
+                                if p.get('nome', '').lower() == o['produto'].lower():
+                                    capacidade = p.get('capacidade')
+                                    break
+                            cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
+                            st.write(f"{idx}. {forn['nome']} — {cap_text}")
+                        else:
+                            st.write(f"{idx}. {fid} — fornecedor não encontrado")
         else:
             st.info("Ordem não encontrada para o produto selecionado.")
 
