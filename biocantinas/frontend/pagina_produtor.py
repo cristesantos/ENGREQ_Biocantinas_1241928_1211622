@@ -55,7 +55,7 @@ def pagina_produtor(API_URL):
 
     prod_ini = st.date_input("Início intervalo produção", value=date.today())
     prod_fim = st.date_input("Fim intervalo produção", value=date.today())
-    capacidade = st.number_input("Capacidade (unidade)", min_value=0, value=0)
+    capacidade = st.number_input("Capacidade (Kg)", min_value=0, value=0)
 
     if st.button("Submeter inscrição"):
         payload = {
