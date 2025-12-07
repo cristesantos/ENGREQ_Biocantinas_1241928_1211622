@@ -7,221 +7,237 @@ import sys
 import os
 from pathlib import Path
 
+# ============================================================
+#  1. Ajustar sys.path para garantir import do backend
+# ============================================================
+
+ROOT = Path(__file__).resolve().parents[1]   # pasta que contém "backend"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+# ============================================================
+#  2. Resolver API_URL (prioridade: secrets → env → local)
+# ============================================================
 
 def _resolve_api_url():
-    """Resolve a API URL com precedência: st.secrets -> ENV -> localhost."""
     url = None
-    # 1) st.secrets (Streamlit Cloud or local .streamlit/secrets.toml)
     try:
         url = st.secrets.get("API_URL") if hasattr(st, "secrets") else None
     except Exception:
         url = None
 
-    # 2) variável de ambiente
     if not url:
         url = os.getenv("API_URL")
 
-    # 3) fallback
     if not url:
         url = "http://127.0.0.1:8000"
 
     return url
-
 
 API_URL = _resolve_api_url()
 
 st.set_page_config(page_title="BioCantinas - Fornecedores")
 st.info(f"API_URL em uso: {API_URL}")
 
-# Tentar importar o app FastAPI localmente; se falhar, desativar servidor embebido
-fastapi_app = None
-try:
-    from biocantinas.backend.app.main import app as fastapi_app
-except ImportError:
-    # Em ambiente de deploy (ex: Streamlit Cloud), a estrutura é diferente
-    # Tentar adicionar o path pai ao sys.path e reimportar
+
+# ============================================================
+#  2.5 Inicialização do estado de sessão (autenticação)
+# ============================================================
+
+if "auth_token" not in st.session_state:
+    st.session_state.auth_token = None
+if "user_info" not in st.session_state:
+    st.session_state.user_info = None
+if "show_register" not in st.session_state:
+    st.session_state.show_register = False
+
+
+# ============================================================
+#  3. Importação robusta da API FastAPI local
+# ============================================================
+
+def _import_fastapi():
+    """
+    Tenta importar a API independentemente da estrutura de pastas.
+    Funciona em desenvolvimento local.
+    """
     try:
-        backend_path = Path(__file__).parent.parent / "backend"
-        if backend_path.exists():
-            sys.path.insert(0, str(backend_path.parent))
-            from biocantinas.backend.app.main import app as fastapi_app
-    except ImportError:
-        st.warning("⚠️ Servidor FastAPI embebido não disponível. Certifique-se que a API está a correr em http://127.0.0.1:8000")
-        fastapi_app = None
+        from backend.app.main import app as api
+        return api
+    except Exception:
+        return None
 
-# Start FastAPI server once per Streamlit session (apenas se disponível localmente)
+fastapi_app = _import_fastapi()
+
+
+# ============================================================
+#  4. Função que inicia a API FastAPI embutida
+# ============================================================
+
 def _start_api():
-    if fastapi_app:
-        uvicorn.run(fastapi_app, host="127.0.0.1", port=8000, log_level="info")
+    print("=== Iniciando FastAPI embutida ===")
+    uvicorn.run(fastapi_app, host="127.0.0.1", port=8000, log_level="info")
 
-if fastapi_app and "api_thread_started" not in st.session_state:
-    st.session_state.api_thread = threading.Thread(target=_start_api, daemon=True)
+
+def _is_running_on_cloud():
+    """STREAMLIT_RUNTIME só existe no Streamlit Cloud."""
+    return "STREAMLIT_RUNTIME" in os.environ
+
+
+# ============================================================
+#  5. Iniciar API somente localmente
+# ============================================================
+
+if (
+    fastapi_app                              # backend carregado corretamente
+    and not _is_running_on_cloud()           # não rodar no Streamlit Cloud
+    and "api_thread_started" not in st.session_state
+):
+    st.session_state.api_thread = threading.Thread(
+        target=_start_api,
+        daemon=True
+    )
     st.session_state.api_thread.start()
     st.session_state.api_thread_started = True
-    st.info("FastAPI iniciado em background na porta 8000")
+    st.info("FastAPI iniciada localmente na porta 8000")
+
+
+# ============================================================
+#  5.5 Funções de autenticação
+# ============================================================
+
+def login(username: str, password: str):
+    """Faz login e armazena o token JWT."""
+    try:
+        response = requests.post(
+            f"{API_URL}/auth/login",
+            json={"username": username, "password": password}
+        )
+        if response.status_code == 200:
+            data = response.json()
+            st.session_state.auth_token = data["access_token"]
+            # Busca info do usuário
+            headers = {"Authorization": f"Bearer {data['access_token']}"}
+            user_resp = requests.get(f"{API_URL}/auth/me", headers=headers)
+            if user_resp.status_code == 200:
+                st.session_state.user_info = user_resp.json()
+            st.success("Login realizado com sucesso!")
+            st.rerun()  # Recarrega para exibir a sidebar
+        else:
+            st.error(f"Erro no login: {response.json().get('detail', 'Usuário ou senha inválidos')}")
+            return False
+    except Exception as e:
+        st.error(f"Erro ao conectar com a API: {str(e)}")
+        return False
+
+
+def register(username: str, password: str, role: str):
+    """Registra um novo usuário."""
+    try:
+        response = requests.post(
+            f"{API_URL}/auth/register",
+            json={"username": username, "password": password, "role": role}
+        )
+        if response.status_code in [200, 201]:
+            st.success("Usuário registrado com sucesso! Faça login agora.")
+            st.session_state.show_register = False
+            return True
+        else:
+            st.error(f"Erro no registro: {response.json().get('detail', 'Erro desconhecido')}")
+            return False
+    except Exception as e:
+        st.error(f"Erro ao conectar com a API: {str(e)}")
+        return False
+
+
+def logout():
+    """Faz logout."""
+    st.session_state.auth_token = None
+    st.session_state.user_info = None
+    st.success("Logout realizado!")
+
+
+# ============================================================
+#  5.6 Página de login/registro (se não autenticado)
+# ============================================================
+
+if not st.session_state.auth_token:
+    st.header("BioCantinas - Autenticação")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        if st.button("Login", use_container_width=True):
+            st.session_state.show_register = False
+    with col2:
+        if st.button("Registrar", use_container_width=True):
+            st.session_state.show_register = True
+    
+    if st.session_state.show_register:
+        st.subheader("Criar nova conta")
+        reg_username = st.text_input("Usuário (registro)", key="reg_username")
+        reg_password = st.text_input("Senha (registro)", type="password", key="reg_password")
+        reg_role = st.selectbox("Papel", ["gestor", "produtor", "outro"], key="reg_role")
+        if st.button("Criar conta"):
+            if reg_username and reg_password:
+                register(reg_username, reg_password, reg_role)
+            else:
+                st.error("Preencha todos os campos!")
+    else:
+        st.subheader("Fazer login")
+        username = st.text_input("Usuário", key="username")
+        password = st.text_input("Senha", type="password", key="password")
+        if st.button("Entrar"):
+            if username and password:
+                login(username, password)
+            else:
+                st.error("Preencha todos os campos!")
+    st.stop()
+
+
+# ============================================================
+#  6. Sidebar e navegação (usuário autenticado)
+# ============================================================
 
 st.sidebar.title("BioCantinas")
+st.sidebar.write(f"👤 Logado como: **{st.session_state.user_info['username']}** ({st.session_state.user_info['role']})")
 
-# Auth state
-if "auth_mode" not in st.session_state:
-    st.session_state.auth_mode = "login"
-if "token" not in st.session_state:
-    st.session_state.token = None
-if "role" not in st.session_state:
-    st.session_state.role = None
-if "username" not in st.session_state:
-    st.session_state.username = None
+if st.sidebar.button("Logout"):
+    logout()
+    st.rerun()
 
-st.header("Autenticação")
-colA, colB = st.columns([3,1])
-with colB:
-    if st.button("Alternar para Sign up" if st.session_state.auth_mode == "login" else "Alternar para Login"):
-        st.session_state.auth_mode = "signup" if st.session_state.auth_mode == "login" else "login"
-        st.rerun()
+# Filtrar páginas por papel do usuário
+user_role = st.session_state.user_info.get("role", "outro")
+paginas_disponiveis = ["Página inicial"]
 
-with colA:
-    user_in = st.text_input("Utilizador", value=st.session_state.username or "")
-    pass_in = st.text_input("Password", type="password")
-    if st.session_state.auth_mode == "login":
-        if st.button("Login"):
-            try:
-                r = requests.post(f"{API_URL}/auth/login", json={"username": user_in, "password": pass_in})
-                if r.ok:
-                    data = r.json()
-                    st.session_state.token = data.get("access_token")
-                    st.session_state.role = data.get("role")
-                    st.session_state.username = data.get("username")
-                    st.success(f"Login como {st.session_state.username} ({st.session_state.role})")
-                    st.rerun()
-                else:
-                    st.error(r.text)
-            except Exception as e:
-                st.error(f"Erro no login: {e}")
-    else:
-        st.caption("Sign up disponível apenas para PRODUTOR")
-        if st.button("Sign up"):
-            try:
-                r = requests.post(f"{API_URL}/auth/signup", json={"username": user_in, "password": pass_in})
-                if r.ok:
-                    st.success("Conta criada. Agora faça login.")
-                else:
-                    st.error(r.text)
-            except Exception as e:
-                st.error(f"Erro no signup: {e}")
+if user_role == "gestor":
+    paginas_disponiveis.append("Gestor")
+if user_role in ["produtor", "fornecedor"]:
+    paginas_disponiveis.append("Produtor")
 
-if st.session_state.token:
-    st.sidebar.success(f"Sessão: {st.session_state.username} ({st.session_state.role})")
-    if st.sidebar.button("Logout"):
-        st.session_state.token = None
-        st.session_state.role = None
-        st.session_state.username = None
-        st.rerun()
+pagina = st.sidebar.radio("Perfil", paginas_disponiveis)
 
-papel = st.sidebar.radio("Perfil", ["Gestor", "Produtor"], index=(0 if st.session_state.role == "GESTOR" else 1) if st.session_state.role else 1)
 
-# Helpers simples
-def _auth_headers():
-    return {"Authorization": f"Bearer {st.session_state.token}"} if st.session_state.token else {}
+# ============================================================
+#  7. Página inicial
+# ============================================================
 
-def list_fornecedores():
-    r = requests.get(f"{API_URL}/fornecedores")
-    r.raise_for_status()
-    return r.json()
+if pagina == "Página inicial":
+    st.header("Bem-vindo ao BioCantinas!")
+    st.write(f"Você está logado como **{st.session_state.user_info['username']}** com o papel **{st.session_state.user_info['role']}**")
 
-def create_fornecedor(payload):
-    r = requests.post(f"{API_URL}/fornecedores", json=payload, headers=_auth_headers())
-    r.raise_for_status()
-    return r.json()
 
-def patch_aprovacao(fid, aprovado: bool):
-    r = requests.patch(
-        f"{API_URL}/fornecedores/{fid}/aprovacao",
-        json={"aprovado": aprovado},
-        headers=_auth_headers(),
-    )
-    r.raise_for_status()
-    return r.json()
+# ============================================================
+#  8. Páginas importadas
+# ============================================================
 
-def get_ordem():
-    r = requests.get(f"{API_URL}/fornecedores/ordem")
-    r.raise_for_status()
-    return r.json()
+elif pagina == "Gestor" and st.session_state.user_info.get("role") == "gestor":
+    from pagina_gestor import pagina_gestor
+    pagina_gestor(API_URL, st.session_state.auth_token)
 
-if papel == "Produtor":
-    if not st.session_state.token:
-        st.warning("Autentique-se para submeter inscrição.")
-    elif st.session_state.role != "PRODUTOR":
-        st.warning("Apenas utilizadores PRODUTOR podem submeter inscrições.")
-    else:
-        st.header("Inscrição de Produtor")
+elif pagina == "Produtor" and st.session_state.user_info.get("role") in ["produtor", "fornecedor"]:
+    from pagina_produtor import pagina_produtor
+    pagina_produtor(API_URL, st.session_state.auth_token)
 
-        nome = st.text_input("Nome do produtor")
-        data_inscricao = st.date_input("Data de inscrição", value=date.today())
-
-        st.subheader("Produtos")
-        prod_nome = st.text_input("Nome do produto")
-        prod_ini = st.date_input("Início intervalo produção", value=date.today())
-        prod_fim = st.date_input("Fim intervalo produção", value=date.today())
-        capacidade = st.number_input("Capacidade (unidade)", min_value=0, value=0)
-
-        if st.button("Submeter inscrição"):
-            payload = {
-                "nome": nome,
-                "data_inscricao": str(data_inscricao),
-                "produtos": [
-                    {
-                        "nome": prod_nome,
-                        "intervalo_producao_inicio": str(prod_ini),
-                        "intervalo_producao_fim": str(prod_fim),
-                        "capacidade": int(capacidade),
-                    }
-                ],
-            }
-            try:
-                novo = create_fornecedor(payload)
-                st.success(f"Produtor criado com id {novo['id']} (aguarda aprovação).")
-            except Exception as e:
-                st.error(f"Erro ao criar fornecedor: {e}")
-
-elif papel == "Gestor":
-    st.header("Gestão de Fornecedores")
-    if not st.session_state.token:
-        st.warning("Autentique-se para gerir fornecedores.")
-    elif st.session_state.role != "GESTOR":
-        st.warning("Apenas utilizadores GESTOR podem aprovar/reprovar.")
-    else:
-        if st.button("Recarregar lista"):
-            st.rerun()
-
-        fornecedores = list_fornecedores()
-        if fornecedores:
-            st.subheader("Fornecedores")
-            for f in fornecedores:
-                col1, col2, col3 = st.columns([3, 1, 1])
-                with col1:
-                    st.write(f"#{f['id']} - {f['nome']}")
-                    st.caption(
-                        f"Data inscrição: {f['data_inscricao']} | "
-                        f"Aprovado: {f['aprovado']}"
-                    )
-                with col2:
-                    if not f["aprovado"]:
-                        if st.button("Aprovar", key=f"ap_{f['id']}"):
-                            patch_aprovacao(f["id"], True)
-                            st.rerun()
-                with col3:
-                    if f["aprovado"]:
-                        if st.button("Reprovar", key=f"rp_{f['id']}"):
-                            patch_aprovacao(f["id"], False)
-                            st.rerun()
-        else:
-            st.info("Ainda não há fornecedores.")
-
-        st.subheader("Ordem de fornecimento por produto")
-        if st.button("Calcular ordem"):
-            ordens = get_ordem()
-            for o in ordens:
-                st.write(
-                    f"Produto: {o['produto']} → ordem de fornecedores: "
-                    f"{', '.join(map(str, o['fornecedores_ids']))}"
-                )
+else:
+    st.error("Acesso negado: você não tem permissão para acessar esta página.")
