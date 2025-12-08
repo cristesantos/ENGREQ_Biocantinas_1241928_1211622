@@ -15,18 +15,18 @@ class UserService:
         self.repo = UserRepo(self.session)
 
     def create_user(self, username: str, password: str, role: str) -> UserORM:
-        password_str = str(password)
-        # bcrypt uses only first 72 bytes; avoid Passlib error by truncating
-        safe_password = password_str[:72]
-        password_hash = pwd_context.hash(safe_password)
+        # bcrypt has a 72-byte limit; truncate password to 72 bytes (not characters)
+        password_bytes = password.encode('utf-8')[:72]
+        password_hash = pwd_context.hash(password_bytes.decode('utf-8', errors='ignore'))
         return self.repo.create(username=username, password_hash=password_hash, role=role)
 
     def verify_user(self, username: str, password: str) -> Optional[UserORM]:
         user = self.repo.get_by_username(username)
         if not user:
             return None
-        password_str = str(password)
-        safe_password = password_str[:72]
+        # bcrypt has a 72-byte limit; truncate password to 72 bytes
+        password_bytes = password.encode('utf-8')[:72]
+        safe_password = password_bytes.decode('utf-8', errors='ignore')
         if not pwd_context.verify(safe_password, user.hashed_password):
             return None
         return user
