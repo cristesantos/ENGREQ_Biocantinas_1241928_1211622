@@ -116,11 +116,12 @@ def login(username: str, password: str):
         if response.status_code == 200:
             data = response.json()
             st.session_state.auth_token = data["access_token"]
-            # Busca info do usuário
-            headers = {"Authorization": f"Bearer {data['access_token']}"}
-            user_resp = requests.get(f"{API_URL}/auth/me", headers=headers)
-            if user_resp.status_code == 200:
-                st.session_state.user_info = user_resp.json()
+            # Preenche info do usuário a partir da resposta do login
+            role = str(data.get("role", "OUTRO")).upper()
+            st.session_state.user_info = {
+                "username": data.get("username", username),
+                "role": role
+            }
             st.success("Login realizado com sucesso!")
             st.rerun()  # Recarrega para exibir a sidebar
         else:
@@ -135,8 +136,8 @@ def register(username: str, password: str, role: str):
     """Registra um novo usuário."""
     try:
         response = requests.post(
-            f"{API_URL}/auth/register",
-            json={"username": username, "password": password, "role": role}
+            f"{API_URL}/auth/signup",
+            json={"username": username, "password": password,  "role": role}
         )
         if response.status_code in [200, 201]:
             st.success("Usuário registrado com sucesso! Faça login agora.")
@@ -177,9 +178,10 @@ if not st.session_state.auth_token:
         st.subheader("Criar nova conta")
         reg_username = st.text_input("Usuário (registro)", key="reg_username")
         reg_password = st.text_input("Senha (registro)", type="password", key="reg_password")
-        reg_role = st.selectbox("Papel", ["gestor", "produtor", "outro"], key="reg_role")
+        reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR"], key="reg_role")
         if st.button("Criar conta"):
             if reg_username and reg_password:
+                # Envia role no formato esperado pelo backend
                 register(reg_username, reg_password, reg_role)
             else:
                 st.error("Preencha todos os campos!")
@@ -200,19 +202,22 @@ if not st.session_state.auth_token:
 # ============================================================
 
 st.sidebar.title("BioCantinas")
-st.sidebar.write(f"👤 Logado como: **{st.session_state.user_info['username']}** ({st.session_state.user_info['role']})")
+if st.session_state.user_info:
+    st.sidebar.write(f"👤 Logado como: **{st.session_state.user_info['username']}** ({st.session_state.user_info['role']})")
+else:
+    st.sidebar.write("👤 Não autenticado")
 
 if st.sidebar.button("Logout"):
     logout()
     st.rerun()
 
 # Filtrar páginas por papel do usuário
-user_role = st.session_state.user_info.get("role", "outro")
+user_role = str((st.session_state.user_info or {}).get("role", "OUTRO")).upper()
 paginas_disponiveis = ["Página inicial"]
 
-if user_role == "gestor":
+if user_role == "GESTOR":
     paginas_disponiveis.append("Gestor")
-if user_role in ["produtor", "fornecedor"]:
+if user_role in ["PRODUTOR", "FORNECEDOR"]:
     paginas_disponiveis.append("Produtor")
 
 pagina = st.sidebar.radio("Perfil", paginas_disponiveis)
@@ -224,18 +229,21 @@ pagina = st.sidebar.radio("Perfil", paginas_disponiveis)
 
 if pagina == "Página inicial":
     st.header("Bem-vindo ao BioCantinas!")
-    st.write(f"Você está logado como **{st.session_state.user_info['username']}** com o papel **{st.session_state.user_info['role']}**")
+    if st.session_state.user_info:
+        st.write(f"Você está logado como **{st.session_state.user_info['username']}** com o papel **{st.session_state.user_info['role']}**")
+    else:
+        st.write("Você ainda não está autenticado.")
 
 
 # ============================================================
 #  8. Páginas importadas
 # ============================================================
 
-elif pagina == "Gestor" and st.session_state.user_info.get("role") == "gestor":
+elif pagina == "Gestor" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR":
     from pagina_gestor import pagina_gestor
     pagina_gestor(API_URL, st.session_state.auth_token)
 
-elif pagina == "Produtor" and st.session_state.user_info.get("role") in ["produtor", "fornecedor"]:
+elif pagina == "Produtor" and str(st.session_state.user_info.get("role", "")).upper() in ["PRODUTOR", "FORNECEDOR"]:
     from pagina_produtor import pagina_produtor
     pagina_produtor(API_URL, st.session_state.auth_token)
 

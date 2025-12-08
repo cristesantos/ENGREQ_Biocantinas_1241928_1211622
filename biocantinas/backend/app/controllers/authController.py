@@ -15,24 +15,32 @@ class TokenResponse(BaseModel):
 	username: str
 
 
-class Credentials(BaseModel):
-    username: str
-    password: str
+class SignupCredentials(BaseModel):
+	username: str
+	password: str
+	role: str
+
+
+class LoginCredentials(BaseModel):
+	username: str
+	password: str
 
 
 @router.post("/signup", response_model=User)
-def signup(payload: Credentials):
-	# Force role to PRODUTOR for signup, ignore provided role
+def signup(payload: SignupCredentials):
 	svc = get_user_service()
 	try:
-		user = svc.create_user(username=payload.username, password=payload.password, role="PRODUTOR")
+		# Do not force a default role; require provided role
+		if payload.role is None or not isinstance(payload.role, str) or payload.role.strip() == "":
+			raise ValueError("Role é obrigatório no registo")
+		user = svc.create_user(username=payload.username, password=payload.password, role=payload.role)
 		return user
 	except ValueError as e:
 		raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: Credentials):
+def login(payload: LoginCredentials):
 	svc = get_user_service()
 	user = svc.verify_user(username=payload.username, password=payload.password)
 	if not user:
