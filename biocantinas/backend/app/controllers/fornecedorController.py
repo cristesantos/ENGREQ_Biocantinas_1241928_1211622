@@ -7,15 +7,20 @@ from ..dtos.userDTO import User
 
 router = APIRouter(tags=["fornecedores"])
 
-@router.post("/fornecedores", response_model=Fornecedor)
-def criar_fornecedor(fornecedor: FornecedorCreate, user: User = Depends(require_role("PRODUTOR"))):
-    svc = get_services()
-    return svc.criar_fornecedor(fornecedor)
-
 @router.get("/fornecedores", response_model=List[Fornecedor])
 def listar_fornecedores():
     svc = get_services()
     return svc.listar_fornecedores()
+
+@router.get("/fornecedores/ordem", response_model=List[OrdemFornecedor])
+def obter_ordem_por_produto():
+    svc = get_services()
+    return svc.calcular_ordem_por_produto()
+
+@router.post("/fornecedores", response_model=Fornecedor)
+def criar_fornecedor(fornecedor: FornecedorCreate, user: User = Depends(require_role("PRODUTOR"))):
+    svc = get_services()
+    return svc.criar_fornecedor(fornecedor)
 
 @router.get("/fornecedores/{fid}", response_model=Fornecedor)
 def obter_fornecedor(fid: int):
@@ -32,8 +37,3 @@ def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = D
         return svc.aprovar_fornecedor(fid, body.aprovado)
     except ValueError:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
-
-@router.get("/fornecedores/ordem", response_model=List[OrdemFornecedor])
-def obter_ordem_por_produto():
-    svc = get_services()
-    return svc.calcular_ordem_por_produto()
