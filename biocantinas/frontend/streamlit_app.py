@@ -178,7 +178,7 @@ if not st.session_state.auth_token:
         st.subheader("Criar nova conta")
         reg_username = st.text_input("Usuário (registro)", key="reg_username")
         reg_password = st.text_input("Senha (registro)", type="password", key="reg_password")
-        reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR"], key="reg_role")
+        reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR", "DIETISTA"], key="reg_role")
         if st.button("Criar conta"):
             if reg_username and reg_password:
                 # Envia role no formato esperado pelo backend
@@ -219,6 +219,8 @@ if user_role == "GESTOR":
     paginas_disponiveis.append("Gestor")
 if user_role in ["PRODUTOR", "FORNECEDOR"]:
     paginas_disponiveis.append("Produtor")
+if user_role == "DIETISTA":
+    paginas_disponiveis.append("Dietista")
 
 pagina = st.sidebar.radio("Perfil", paginas_disponiveis)
 
@@ -246,6 +248,10 @@ elif pagina == "Gestor" and str(st.session_state.user_info.get("role", "")).uppe
 elif pagina == "Produtor" and str(st.session_state.user_info.get("role", "")).upper() in ["PRODUTOR", "FORNECEDOR"]:
     from pagina_produtor import pagina_produtor
     pagina_produtor(API_URL, st.session_state.auth_token)
+
+elif pagina == "Dietista" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
+    from pagina_dietista import pagina_dietista
+    pagina_dietista(API_URL, st.session_state.auth_token)
 
 else:
     st.error("Acesso negado: você não tem permissão para acessar esta página.")
