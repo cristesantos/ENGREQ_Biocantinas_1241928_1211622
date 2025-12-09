@@ -17,6 +17,7 @@ class FornecedorRepo:
 		orm.produtos = [
 			ProdutoFornecedorORM(
 				nome=p.nome,
+				tipo=p.tipo,
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
 				capacidade=p.capacidade,
@@ -50,6 +51,7 @@ class FornecedorRepo:
 		produtos = [
 			ProdutoFornecedorModel(
 				nome=p.nome,
+				tipo=p.tipo,
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
 				capacidade=p.capacidade,

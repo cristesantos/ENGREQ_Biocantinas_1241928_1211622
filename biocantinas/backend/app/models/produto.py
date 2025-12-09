@@ -4,6 +4,7 @@ from datetime import date
 @dataclass
 class ProdutoFornecedorModel:
     nome: str
-    intervalo_producao_inicio: date
-    intervalo_producao_fim: date
-    capacidade: int
+    tipo: str | None = None
+    intervalo_producao_inicio: date = None
+    intervalo_producao_fim: date = None
+    capacidade: int = 0

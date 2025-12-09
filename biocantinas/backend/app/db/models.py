@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -17,6 +17,7 @@ class ProdutoFornecedorORM(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     fornecedor_id = Column(Integer, ForeignKey("fornecedores.id"), nullable=False)
     nome = Column(String, nullable=False)
+    tipo = Column(String, nullable=True)  # Categoria do produto: fruta, hortícola, proteína, etc.
     intervalo_producao_inicio = Column(Date, nullable=False)
     intervalo_producao_fim = Column(Date, nullable=False)
     capacidade = Column(Integer, nullable=False)
@@ -30,3 +31,36 @@ class UserORM(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+
+
+class EmentaORM(Base):
+    __tablename__ = "ementas"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String, nullable=False)
+    data_inicio = Column(Date, nullable=False)
+    data_fim = Column(Date, nullable=False)
+    
+    refeicoes = relationship("RefeicaoORM", back_populates="ementa", cascade="all, delete-orphan")
+
+
+class RefeicaoORM(Base):
+    __tablename__ = "refeicoes"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    ementa_id = Column(Integer, ForeignKey("ementas.id"), nullable=False)
+    dia_semana = Column(Integer, nullable=False)  # 1=Segunda, 2=Terça, ..., 5=Sexta
+    tipo = Column(String, nullable=False)  # "almoço" ou "jantar"
+    descricao = Column(Text, nullable=True)
+    
+    ementa = relationship("EmentaORM", back_populates="refeicoes")
+    itens = relationship("ItemRefeicaoORM", back_populates="refeicao", cascade="all, delete-orphan")
+
+
+class ItemRefeicaoORM(Base):
+    __tablename__ = "itens_refeicao"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
+    produto_id = Column(Integer, ForeignKey("produtos_fornecedor.id"), nullable=True)
+    ingrediente = Column(String, nullable=False)
+    quantidade_estimada = Column(Integer, nullable=True)
+    
+    refeicao = relationship("RefeicaoORM", back_populates="itens")

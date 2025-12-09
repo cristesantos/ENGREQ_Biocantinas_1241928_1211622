@@ -4,6 +4,7 @@ from typing import List
 
 class ProdutoFornecedor(BaseModel):
 	nome: str
+	tipo: str | None = None
 	intervalo_producao_inicio: date
 	intervalo_producao_fim: date
 	capacidade: int
