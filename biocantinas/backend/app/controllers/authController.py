@@ -9,34 +9,34 @@ router = APIRouter(tags=["auth"], prefix="/auth")
 
 
 class TokenResponse(BaseModel):
-	access_token: str
-	token_type: str = "bearer"
-	role: str
-	username: str
+    access_token: str
+    token_type: str = "bearer"
+    role: str
+    username: str
 
 
 class SignupCredentials(BaseModel):
-	username: str
-	password: str
-	role: str
+    username: str
+    password: str
+    role: str
 
 
 class LoginCredentials(BaseModel):
-	username: str
-	password: str
+    username: str
+    password: str
 
 
 @router.post("/signup", response_model=User)
 def signup(payload: SignupCredentials):
-	svc = get_user_service()
-	try:
-		# Do not force a default role; require provided role
-		if payload.role is None or not isinstance(payload.role, str) or payload.role.strip() == "":
-			raise ValueError("Role é obrigatório no registo")
-		user = svc.create_user(username=payload.username, password=payload.password, role=payload.role)
-		return user
-	except ValueError as e:
-		raise HTTPException(status_code=400, detail=str(e))
+    svc = get_user_service()
+    try:
+        # Do not force a default role; require provided role
+        if payload.role is None or not isinstance(payload.role, str) or payload.role.strip() == "":
+            raise ValueError("Role é obrigatório no registo")
+        user = svc.create_user(username=payload.username, password=payload.password, role=payload.role)
+        return user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/login", response_model=TokenResponse)
