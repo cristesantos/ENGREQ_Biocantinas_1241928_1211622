@@ -19,7 +19,7 @@ def patch_aprovacao(API_URL, auth_token, fid, aprovado: bool):
 
 def get_ordem(API_URL, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
-    r = requests.get(f"{API_URL}/fornecedores/ordem_fornecedor", headers=headers)
+    r = requests.get(f"{API_URL}/fornecedores/ordem", headers=headers)
     r.raise_for_status()
     return r.json()
 
