@@ -1,4 +1,5 @@
 from typing import List, Optional
+from datetime import date
 from sqlalchemy.orm import Session
 from ..db.models import EmentaORM, RefeicaoORM, ItemRefeicaoORM
 from ..models.ementa import EmentaModel, RefeicaoModel, ItemRefeicaoModel
@@ -96,6 +97,18 @@ class EmentaRepo:
         self.session.delete(orm)
         self.session.commit()
         return True
+
+    def listar_por_periodo(self, data_inicio: date, data_fim: date) -> List[EmentaORM]:
+        """
+        Retorna todas as ementas que se sobrepõem ao período especificado.
+        Uma ementa se sobrepõe se:
+        - Começa antes do fim do período E
+        - Termina depois do início do período
+        """
+        return self.session.query(EmentaORM).filter(
+            EmentaORM.data_inicio <= data_fim,
+            EmentaORM.data_fim >= data_inicio
+        ).all()
 
     def _to_model(self, orm: EmentaORM) -> EmentaModel:
         refeicoes = []

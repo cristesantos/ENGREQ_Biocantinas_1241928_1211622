@@ -221,6 +221,7 @@ if user_role in ["PRODUTOR", "FORNECEDOR"]:
     paginas_disponiveis.append("Produtor")
 if user_role == "GESTOR_CANTINA":
     paginas_disponiveis.append("Gestor Cantina")
+    paginas_disponiveis.append("Aprovisionamento")
 if user_role == "DIETISTA":
     paginas_disponiveis.append("Dietista")
 
@@ -254,6 +255,10 @@ elif pagina == "Produtor" and str(st.session_state.user_info.get("role", "")).up
 elif pagina == "Gestor Cantina" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_CANTINA":
     from pagina_gestor_cantina import pagina_gestor_cantina
     pagina_gestor_cantina(API_URL, st.session_state.auth_token)
+
+elif pagina == "Aprovisionamento" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_CANTINA":
+    from pagina_aprovisionamento import mostrar_aprovisionamento
+    mostrar_aprovisionamento()
 
 elif pagina == "Dietista" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
     from pagina_dietista import pagina_dietista

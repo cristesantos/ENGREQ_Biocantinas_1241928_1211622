@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text, Float, DateTime
 from sqlalchemy.orm import declarative_base, relationship
+from datetime import datetime
 
 Base = declarative_base()
 
@@ -64,3 +65,44 @@ class ItemRefeicaoORM(Base):
     quantidade_estimada = Column(Integer, nullable=True)
     
     refeicao = relationship("RefeicaoORM", back_populates="itens")
+    produto = relationship("ProdutoFornecedorORM")
+
+
+# TABELAS PARA APROVISIONAMENTO (REQUISITO 4)
+
+class ReservaRefeicaoORM(Base):
+    __tablename__ = "reservas_refeicoes"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    utilizador_id = Column(Integer, ForeignKey("utilizadores.id"), nullable=False)
+    refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
+    data_reserva = Column(DateTime, default=datetime.utcnow, nullable=False)
+    quantidade_pessoas = Column(Integer, default=1, nullable=False)
+    
+    refeicao = relationship("RefeicaoORM")
+    utilizador = relationship("UserORM")
+
+
+class PlanoProducaoORM(Base):
+    __tablename__ = "plano_producao"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    data_calculo = Column(DateTime, default=datetime.utcnow, nullable=False)
+    produto_nome = Column(String, nullable=False)
+    quantidade_prevista = Column(Integer, nullable=False)
+    quantidade_realizada = Column(Integer, nullable=False)
+    desvio_percentual = Column(Float, nullable=False)
+    requer_alerta = Column(Boolean, default=False, nullable=False)
+
+
+class PedidoFornecedorORM(Base):
+    __tablename__ = "pedidos_fornecedores"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    fornecedor_id = Column(Integer, ForeignKey("fornecedores.id"), nullable=False)
+    produto_id = Column(Integer, ForeignKey("produtos_fornecedor.id"), nullable=False)
+    quantidade_solicitada = Column(Integer, nullable=False)
+    data_pedido = Column(DateTime, default=datetime.utcnow, nullable=False)
+    data_entrega_prevista = Column(Date, nullable=False)
+    status = Column(String, default="pendente", nullable=False)
+    ordem_prioridade = Column(Integer, nullable=False)
+    
+    fornecedor = relationship("FornecedorORM")
+    produto = relationship("ProdutoFornecedorORM")
