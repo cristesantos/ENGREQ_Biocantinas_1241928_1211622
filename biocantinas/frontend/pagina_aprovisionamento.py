@@ -27,16 +27,14 @@ def mostrar_aprovisionamento():
     headers = {"Authorization": f"Bearer {token}"}
     
     # Tabs para organizar funcionalidades
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🔍 Preview de Necessidades",
-        "✅ Plano de Produção",
-        "📮 Pedidos aos Fornecedores",
-        "⚠️ Alertas"
+    tab1, tab2 = st.tabs([
+        "🔍 Previsão de Necessidades",
+        "📋 Ordem de Fornecimento"
     ])
     
-    # ============ TAB 1: PREVIEW DE NECESSIDADES ============
+    # ============ TAB 1: PREVISÃO DE NECESSIDADES ============
     with tab1:
-        st.subheader("🔍 Preview de Necessidades (Visualização)")
+        st.subheader("🔍 Previsão de Necessidades (Visualização)")
         st.write("Visualize as necessidades sem salvar no banco de dados")
         
         col1, col2 = st.columns(2)
@@ -83,7 +81,7 @@ def mostrar_aprovisionamento():
                                 ementa_html += f"<i>{refeicao['descricao']}</i></p>"
                                 ementa_html += "<ul style='margin: 2px 0 8px 0; padding-left: 20px;'>"
                                 for ing in refeicao['ingredientes']:
-                                    ementa_html += f"<li>{ing['ingrediente']}: {ing['quantidade']} kg</li>"
+                                    ementa_html += f"<li>{ing['ingrediente']}: {ing.get('quantidade_estimada', ing.get('quantidade', 0))} kg</li>"
                                 ementa_html += "</ul><hr style='margin: 4px 0;'>"
                             ementa_html += "</div>"
                             st.markdown(ementa_html, unsafe_allow_html=True)
@@ -113,19 +111,23 @@ def mostrar_aprovisionamento():
                         num_refeicoes = len(dados.get("refeicoes_detalhes", []))
                         altura_historico = min(max(num_refeicoes * 35 + 38, 150), 400)
                         
-                        # Aplicar CSS para reduzir tamanho da fonte e padding
-                        st.markdown("""
-                        <style>
-                        [data-testid="stDataFrame"] {
-                            font-size: 0.8em;
+                        # Configurar colunas com larguras personalizadas
+                        column_config = {
+                            "Data": st.column_config.TextColumn("Data", width="small"),
+                            "Dia Semana": st.column_config.TextColumn("Dia Semana", width="small"),
+                            "Tipo": st.column_config.TextColumn("Tipo", width="small"),
+                            "Descrição": st.column_config.TextColumn("Descrição", width="large"),
+                            "Previsão": st.column_config.NumberColumn("Previsão", width="small"),
+                            "Reservas Reais": st.column_config.NumberColumn("Reservas Reais", width="small")
                         }
-                        [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
-                            padding: 4px 8px !important;
-                        }
-                        </style>
-                        """, unsafe_allow_html=True)
                         
-                        st.dataframe(df_historico, use_container_width=True, height=altura_historico)
+                        st.dataframe(
+                            df_historico, 
+                            use_container_width=True, 
+                            height=altura_historico,
+                            column_config=column_config,
+                            hide_index=True
+                        )
                     else:
                         st.info("Sem dados históricos")
                 
@@ -135,197 +137,57 @@ def mostrar_aprovisionamento():
             except Exception as e:
                 st.error(f"❌ Erro ao conectar com API: {str(e)}")
     
-    # ============ TAB 2: PLANO DE PRODUÇÃO ============
+    # ============ TAB 2: ORDEM DE FORNECIMENTO ============
     with tab2:
-        st.subheader("✅ Calcular Plano de Produção Final")
-        st.write("Calcula e **salva** o plano de produção no banco de dados")
+        st.subheader("📋 Ordem de Fornecimento por Produto")
+        st.write("Visualize a ordem de prioridade dos fornecedores por produto")
         
-        col1, col2 = st.columns(2)
-        with col1:
-            data_inicio_plano = st.date_input(
-                "Data Início",
-                value=date.today(),
-                key="plano_inicio"
+        try:
+            response = requests.get(
+                f"{API_BASE}/fornecedores/ordem",
+                headers=headers
             )
-        with col2:
-            data_fim_plano = st.date_input(
-                "Data Fim",
-                value=date.today() + timedelta(days=7),
-                key="plano_fim"
-            )
-        
-        st.warning("⚠️ **Atenção:** Esta ação irá salvar o plano de produção no banco de dados.")
-        
-        if st.button("✅ Calcular e Salvar Plano", type="primary", key="btn_plano"):
-            try:
-                response = requests.post(
-                    f"{API_BASE}/aprovisionamento/calcular-plano",
-                    params={
-                        "data_inicio": str(data_inicio_plano),
-                        "data_fim": str(data_fim_plano)
-                    },
+            
+            if response.status_code == 200:
+                ordens = response.json()
+                
+                # Buscar dados dos fornecedores
+                response_forn = requests.get(
+                    f"{API_BASE}/fornecedores",
                     headers=headers
                 )
                 
-                if response.status_code == 200:
-                    resultado = response.json()
+                if response_forn.status_code == 200:
+                    fornecedores = response_forn.json()
+                    id_to_fornecedor = {f['id']: f for f in fornecedores}
                     
-                    st.success(f"✅ Plano calculado e salvo com sucesso!")
-                    
-                    # Métricas
-                    col_m1, col_m2, col_m3 = st.columns(3)
-                    with col_m1:
-                        st.metric("Total de Produtos", resultado.get("total_produtos", 0))
-                    with col_m2:
-                        st.metric("Produtos com Alerta", resultado.get("produtos_com_alerta", 0))
-                    with col_m3:
-                        st.metric("Período", resultado.get("periodo", ""))
-                    
-                    # Alertas
-                    if resultado.get("alertas"):
-                        st.warning(f"⚠️ **{len(resultado['alertas'])} alertas de desvio > 10%**")
-                        for alerta in resultado["alertas"]:
-                            st.write(f"- {alerta['mensagem']}")
+                    if ordens:
+                        for o in ordens:
+                            with st.expander(f"{o['produto']} ({len(o.get('fornecedores_ids', []))} fornecedores)"):
+                                if not o.get('fornecedores_ids'):
+                                    st.write("Nenhum fornecedor para este produto.")
+                                    continue
+                                for idx, fid in enumerate(o['fornecedores_ids'], start=1):
+                                    forn = id_to_fornecedor.get(fid)
+                                    if forn:
+                                        capacidade = None
+                                        for p in forn.get('produtos', []):
+                                            if p.get('nome', '').lower() == o['produto'].lower():
+                                                capacidade = p.get('capacidade')
+                                                break
+                                        cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
+                                        st.write(f"{idx}. {forn['nome']} — {cap_text}")
+                                    else:
+                                        st.write(f"{idx}. {fid} — fornecedor não encontrado")
                     else:
-                        st.success("✅ Nenhum alerta de desvio significativo")
-                    
-                    # Tabela do plano
-                    if resultado.get("plano"):
-                        st.markdown("**📋 Plano Detalhado**")
-                        df_plano = pd.DataFrame(resultado["plano"])
-                        st.dataframe(df_plano, use_container_width=True)
-                
+                        st.info("Ainda não há ordens calculadas.")
                 else:
-                    st.error(f"❌ Erro {response.status_code}: {response.json().get('detail', 'Erro desconhecido')}")
-            
-            except Exception as e:
-                st.error(f"❌ Erro: {str(e)}")
-    
-    # ============ TAB 3: PEDIDOS AOS FORNECEDORES ============
-    with tab3:
-        st.subheader("📮 Gerar Pedidos aos Fornecedores")
-        st.write("Cria pedidos automaticamente com ordem de prioridade por data de inscrição")
+                    st.error(f"❌ Erro ao carregar fornecedores: {response_forn.status_code}")
+            else:
+                st.error(f"❌ Erro ao carregar ordens: {response.status_code}")
         
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            data_inicio_pedido = st.date_input(
-                "Data Início (Período)",
-                value=date.today(),
-                key="pedido_inicio"
-            )
-        with col2:
-            data_fim_pedido = st.date_input(
-                "Data Fim (Período)",
-                value=date.today() + timedelta(days=7),
-                key="pedido_fim"
-            )
-        with col3:
-            data_entrega = st.date_input(
-                "Data de Entrega Desejada",
-                value=date.today() + timedelta(days=3),
-                key="data_entrega"
-            )
-        
-        if st.button("📮 Gerar Pedidos", type="primary", key="btn_pedidos"):
-            try:
-                response = requests.post(
-                    f"{API_BASE}/aprovisionamento/gerar-pedidos",
-                    params={
-                        "data_inicio": str(data_inicio_pedido),
-                        "data_fim": str(data_fim_pedido),
-                        "data_entrega": str(data_entrega)
-                    },
-                    headers=headers
-                )
-                
-                if response.status_code == 200:
-                    resultado = response.json()
-                    
-                    st.success(f"✅ {resultado.get('total', 0)} pedidos criados com sucesso!")
-                    
-                    if resultado.get("pedidos_criados"):
-                        df_pedidos = pd.DataFrame(resultado["pedidos_criados"])
-                        st.dataframe(df_pedidos, use_container_width=True)
-                    
-                    if resultado.get("erros"):
-                        st.warning("⚠️ **Erros encontrados:**")
-                        for erro in resultado["erros"]:
-                            st.write(f"- {erro}")
-                
-                else:
-                    st.error(f"❌ Erro {response.status_code}")
-            
-            except Exception as e:
-                st.error(f"❌ Erro: {str(e)}")
-        
-        # Listar pedidos existentes
-        st.markdown("---")
-        st.subheader("📋 Pedidos Existentes")
-        
-        status_filtro = st.selectbox(
-            "Filtrar por status",
-            ["Todos", "pendente", "confirmado", "entregue"],
-            key="filtro_status"
-        )
-        
-        if st.button("🔄 Atualizar Lista", key="btn_atualizar"):
-            try:
-                params = {} if status_filtro == "Todos" else {"status": status_filtro}
-                
-                response = requests.get(
-                    f"{API_BASE}/aprovisionamento/pedidos",
-                    params=params,
-                    headers=headers
-                )
-                
-                if response.status_code == 200:
-                    dados = response.json()
-                    
-                    if dados.get("pedidos"):
-                        df = pd.DataFrame(dados["pedidos"])
-                        st.dataframe(df, use_container_width=True)
-                        st.caption(f"Total: {dados.get('total', 0)} pedidos")
-                    else:
-                        st.info("Nenhum pedido encontrado")
-                
-                else:
-                    st.error(f"❌ Erro {response.status_code}")
-            
-            except Exception as e:
-                st.error(f"❌ Erro: {str(e)}")
-    
-    # ============ TAB 4: ALERTAS ============
-    with tab4:
-        st.subheader("⚠️ Alertas de Desvio > 10%")
-        st.write("Lista de produtos com desvio significativo entre planejado e realizado")
-        
-        if st.button("🔄 Carregar Alertas", key="btn_alertas"):
-            try:
-                response = requests.get(
-                    f"{API_BASE}/aprovisionamento/alertas",
-                    headers=headers
-                )
-                
-                if response.status_code == 200:
-                    dados = response.json()
-                    
-                    total = dados.get("total_alertas", 0)
-                    
-                    if total > 0:
-                        st.warning(f"⚠️ **{total} alertas encontrados**")
-                        
-                        alertas_data = dados.get("alertas", [])
-                        if alertas_data:
-                            df_alertas = pd.DataFrame(alertas_data)
-                            st.dataframe(df_alertas, use_container_width=True)
-                    else:
-                        st.success("✅ Nenhum alerta de desvio significativo")
-                
-                else:
-                    st.error(f"❌ Erro {response.status_code}")
-            
-            except Exception as e:
-                st.error(f"❌ Erro: {str(e)}")
+        except Exception as e:
+            st.error(f"❌ Erro: {str(e)}")
 
 
 if __name__ == "__main__":
