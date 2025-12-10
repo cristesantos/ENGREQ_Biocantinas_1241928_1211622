@@ -69,44 +69,65 @@ def mostrar_aprovisionamento():
                     
                     st.success(f"✅ Preview gerado para {dados['periodo']}")
                     
-                    col_a, col_b = st.columns(2)
+                    # Linha 1: Ementa e Necessidades Planejadas lado a lado
+                    col1, col2 = st.columns(2)
                     
-                    with col_a:
+                    with col1:
+                        st.markdown("**📋 Ementa do Período**")
+                        if dados.get("refeicoes_detalhes"):
+                            ementa_html = "<div style='font-size: 0.85em; line-height: 1.3;'>"
+                            for refeicao in dados["refeicoes_detalhes"]:
+                                data_label = refeicao.get('data', '')
+                                dia_semana = refeicao.get('dia_semana', '')
+                                ementa_html += f"<p style='margin: 8px 0 2px 0;'><b>📅 {data_label} ({dia_semana}) - {refeicao['tipo'].title()}</b><br>"
+                                ementa_html += f"<i>{refeicao['descricao']}</i></p>"
+                                ementa_html += "<ul style='margin: 2px 0 8px 0; padding-left: 20px;'>"
+                                for ing in refeicao['ingredientes']:
+                                    ementa_html += f"<li>{ing['ingrediente']}: {ing['quantidade']} kg</li>"
+                                ementa_html += "</ul><hr style='margin: 4px 0;'>"
+                            ementa_html += "</div>"
+                            st.markdown(ementa_html, unsafe_allow_html=True)
+                        else:
+                            st.info("Sem ementas")
+                    
+                    with col2:
                         st.markdown("**📊 Necessidades Planejadas**")
-                        st.caption("(Baseado nas ementas criadas)")
-                        if dados["necessidades_planejadas"]:
+                        st.caption("Quantidade total de produtos com histórico aplicado")
+                        if dados.get("necessidades_previstas_historico"):
                             df_planejadas = pd.DataFrame(
-                                list(dados["necessidades_planejadas"].items()),
+                                list(dados["necessidades_previstas_historico"].items()),
                                 columns=["Produto", "Quantidade (kg)"]
                             )
                             st.dataframe(df_planejadas, use_container_width=True)
                         else:
-                            st.info("Nenhuma ementa planejada para este período")
+                            st.info("Sem histórico")
                     
-                    with col_b:
-                        st.markdown("**📈 Necessidades com Reservas**")
-                        st.caption("(Ajustado com reservas de estudantes)")
-                        if dados["necessidades_com_reservas"]:
-                            df_reservas = pd.DataFrame(
-                                list(dados["necessidades_com_reservas"].items()),
-                                columns=["Produto", "Quantidade (kg)"]
-                            )
-                            st.dataframe(df_reservas, use_container_width=True)
-                        else:
-                            st.info("Nenhuma reserva registrada")
+                    st.divider()
                     
-                    # Mostrar desvios
-                    st.markdown("**📉 Desvios Percentuais**")
-                    if dados.get("desvios_percentuais"):
-                        desvios_data = [
-                            {
-                                "Produto": prod,
-                                "Desvio (%)": f"{desvio:+.1f}%",
-                                "Status": "⚠️ Alerta" if abs(desvio) > 10 else "✅ OK"
-                            }
-                            for prod, desvio in dados["desvios_percentuais"].items()
-                        ]
-                        st.dataframe(pd.DataFrame(desvios_data), use_container_width=True)
+                    # Linha 2: Histórico de Reservas (largura total)
+                    st.markdown("**📈 Histórico de Reservas**")
+                    st.caption("Dados históricos por prato do período")
+                    if dados.get("historico_detalhes"):
+                        df_historico = pd.DataFrame(dados["historico_detalhes"])
+                        # Calcular altura baseada no número de refeições (aproximadamente 35px por linha + header)
+                        num_refeicoes = len(dados.get("refeicoes_detalhes", []))
+                        altura_historico = min(max(num_refeicoes * 35 + 38, 150), 400)
+                        
+                        # Aplicar CSS para reduzir tamanho da fonte e padding
+                        st.markdown("""
+                        <style>
+                        [data-testid="stDataFrame"] {
+                            font-size: 0.8em;
+                        }
+                        [data-testid="stDataFrame"] td, [data-testid="stDataFrame"] th {
+                            padding: 4px 8px !important;
+                        }
+                        </style>
+                        """, unsafe_allow_html=True)
+                        
+                        st.dataframe(df_historico, use_container_width=True, height=altura_historico)
+                    else:
+                        st.info("Sem dados históricos")
                 
                 else:
                     st.error(f"❌ Erro {response.status_code}: {response.json().get('detail', 'Erro desconhecido')}")

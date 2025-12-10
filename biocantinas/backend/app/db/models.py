@@ -106,3 +106,32 @@ class PedidoFornecedorORM(Base):
     
     fornecedor = relationship("FornecedorORM")
     produto = relationship("ProdutoFornecedorORM")
+
+
+class HistoricoRefeicoesDiaORM(Base):
+    """
+    Histórico de TOTAL de refeições oferecidas por dia da semana e tipo.
+    Ex: "Segunda almoço: 200 refeições", "Sexta jantar: 180 refeições"
+    """
+    __tablename__ = "historico_refeicoes_dia"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dia_semana = Column(String, nullable=False)  # "segunda", "terca", etc.
+    tipo_refeicao = Column(String, nullable=False)  # "almoço" ou "jantar"
+    total_refeicoes = Column(Integer, nullable=False)  # Total oferecido neste dia/tipo
+    ultima_atualizacao = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class HistoricoReservasPratoORM(Base):
+    """
+    Histórico de reservas por PRATO ESPECÍFICO em cada dia da semana e tipo.
+    Ex: "Segunda almoço - Frango: 95 reservas de 200 totais = 47.5%"
+    Usado para calcular a % de produção de cada prato.
+    """
+    __tablename__ = "historico_reservas_prato"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    dia_semana = Column(String, nullable=False)  # "segunda", "terca", etc.
+    tipo_refeicao = Column(String, nullable=False)  # "almoço" ou "jantar"
+    descricao_prato = Column(String, nullable=False)  # Ex: "Frango grelhado", "Peixe assado"
+    total_reservas = Column(Integer, nullable=False)  # Quantas vezes foi escolhido
+    percentual_escolha = Column(Float, nullable=False)  # % em relação ao total do dia (0.0 a 1.0)
+    ultima_atualizacao = Column(DateTime, default=datetime.utcnow, nullable=False)
