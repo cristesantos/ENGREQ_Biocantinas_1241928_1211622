@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from datetime import date
 from typing import List
+from sqlalchemy import func
 from ..services.aprovisionamentoService import get_aprovisionamento_service
 from ..auth.jwt import require_role, get_current_user
 from ..dtos.userDTO import User
 from ..dtos.aprovisionamentoDTO import ReservaRefeicaoCreate, ReservaRefeicaoDTO
+from ..db.models import ReservaRefeicaoORM
 
 router = APIRouter(prefix="/aprovisionamento", tags=["aprovisionamento"])
 
@@ -65,31 +67,104 @@ def preview_necessidades(
 ):
     """
     Preview de necessidades SEM salvar no banco.
+    Usa PREVISÃO HISTÓRICA para estimar demanda baseada em padrões passados.
+    
     Mostra:
     - Necessidades planejadas (baseado na ementa)
-    - Necessidades ajustadas (com reservas)
+    - Necessidades previstas (usando histórico de popularidade por dia/prato)
     - Desvios percentuais
+    
+    LÓGICA:
+    - Busca total de refeições do histórico por dia da semana
+    - Aplica % de escolha de cada prato para calcular quantidades
     """
     service = get_aprovisionamento_service()
     
     necessidades_base = service.calcular_necessidades(data_inicio, data_fim)
-    necessidades_ajustadas, reservas = service.ajustar_com_reservas(
+    necessidades_previstas = service.ajustar_com_previsao_historica(
         necessidades_base.copy(), data_inicio, data_fim
     )
     
     # Calcular desvios para visualização
     desvios = {}
-    for produto in set(necessidades_base.keys()) | set(necessidades_ajustadas.keys()):
+    for produto in set(necessidades_base.keys()) | set(necessidades_previstas.keys()):
         qtd_planejada = necessidades_base.get(produto, 0)
-        qtd_ajustada = necessidades_ajustadas.get(produto, 0)
-        desvio = service.calcular_desvio(qtd_planejada, qtd_ajustada)
+        qtd_prevista = necessidades_previstas.get(produto, 0)
+        desvio = service.calcular_desvio(qtd_planejada, qtd_prevista)
         desvios[produto] = round(desvio, 2)
+    
+    # Buscar detalhes das ementas do período
+    ementas = service.ementa_repo.listar_por_periodo(data_inicio, data_fim)
+    refeicoes_detalhes = []
+    from datetime import timedelta
+    dias_semana_nomes = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+    dias_semana = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]
+    
+    historico_repo = service.historico_repo
+    
+    for ementa in ementas:
+        # Iterar sobre cada dia da ementa que esteja no período selecionado
+        data_atual = max(ementa.data_inicio, data_inicio)
+        data_fim_ementa = min(ementa.data_fim, data_fim)
+        
+        while data_atual <= data_fim_ementa:
+            dia_semana_num = data_atual.weekday() + 1  # 1=Segunda, 2=Terça, etc
+            dia_semana_texto = dias_semana[data_atual.weekday()]
+            
+            # Buscar refeições deste dia da semana
+            for refeicao in ementa.refeicoes:
+                if refeicao.dia_semana == dia_semana_num:
+                    ingredientes = [
+                        {"ingrediente": item.ingrediente, "quantidade_estimada": item.quantidade_estimada}
+                        for item in refeicao.itens
+                    ]
+                    
+                    # Buscar previsão histórica
+                    reservas_historico = historico_repo.obter_reservas_prato(
+                        dia_semana_texto, refeicao.tipo.lower(), refeicao.descricao or ""
+                    )
+                    
+                    # Contar reservas reais
+                    reservas_reais = service.session.query(
+                        func.sum(ReservaRefeicaoORM.quantidade_pessoas)
+                    ).filter(
+                        ReservaRefeicaoORM.refeicao_id == refeicao.id
+                    ).scalar() or 0
+                    
+                    refeicoes_detalhes.append({
+                        "data": str(data_atual),
+                        "dia_nome": dias_semana_nomes[data_atual.weekday()],
+                        "dia_semana_texto": dia_semana_texto.capitalize(),
+                        "descricao": refeicao.descricao or f"Refeição {refeicao.tipo}",
+                        "tipo": refeicao.tipo,
+                        "ingredientes": ingredientes,
+                        "previsao_reservas": reservas_historico,
+                        "reservas_reais": int(reservas_reais)
+                    })
+            
+            data_atual += timedelta(days=1)
+    
+    # Buscar detalhes do histórico para exibição
+    historico_detalhes = []
+    for ref in refeicoes_detalhes:
+        historico_detalhes.append({
+            "Data": ref["data"],
+            "Dia": ref["dia_nome"],
+            "Tipo": ref["tipo"].title(),
+            "Prato": ref["descricao"],
+            "Previsão Histórica": ref["previsao_reservas"],
+            "Reservas Reais": ref["reservas_reais"]
+        })
     
     return {
         "periodo": f"{data_inicio} a {data_fim}",
         "necessidades_planejadas": necessidades_base,
-        "necessidades_com_reservas": necessidades_ajustadas,
-        "desvios_percentuais": desvios
+        "necessidades_previstas": necessidades_previstas,
+        "necessidades_previstas_historico": necessidades_previstas,  # Alias para compatibilidade
+        "desvios": desvios,
+        "refeicoes_detalhes": refeicoes_detalhes,
+        "historico_detalhes": historico_detalhes,
+        "metodo": "previsao_historica"
     }
 
 

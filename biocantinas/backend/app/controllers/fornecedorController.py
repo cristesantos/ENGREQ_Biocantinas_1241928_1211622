@@ -17,6 +17,15 @@ def obter_ordem_por_produto():
     svc = get_services()
     return svc.calcular_ordem_por_produto()
 
+@router.get("/fornecedores/meu-perfil", response_model=Fornecedor)
+def obter_meu_perfil(user: User = Depends(get_current_user)):
+    """Retorna o perfil de fornecedor do usuário logado"""
+    svc = get_services()
+    fornecedor = svc.obter_fornecedor_por_nome(user.username)
+    if not fornecedor:
+        raise HTTPException(status_code=404, detail="Perfil de fornecedor não encontrado")
+    return fornecedor
+
 @router.post("/fornecedores", response_model=Fornecedor)
 def criar_fornecedor(fornecedor: FornecedorCreate, user: User = Depends(require_role("PRODUTOR"))):
     svc = get_services()
