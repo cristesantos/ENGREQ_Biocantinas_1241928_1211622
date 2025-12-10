@@ -47,6 +47,14 @@ class Services:
         m = self.repo.obter_fornecedor(fid)
         return model_to_dto(m) if m else None
 
+    def obter_fornecedor_por_nome(self, nome: str) -> FornecedorDTO | None:
+        """Obtém fornecedor pelo nome (usado para matching com username)"""
+        fornecedores = self.repo.listar_fornecedores()
+        for f in fornecedores:
+            if f.nome.lower() == nome.lower():
+                return model_to_dto(f)
+        return None
+
     def aprovar_fornecedor(self, fid: int, aprovado: bool) -> FornecedorDTO:
         fornecedor = self.repo.obter_fornecedor(fid)
         if not fornecedor:
