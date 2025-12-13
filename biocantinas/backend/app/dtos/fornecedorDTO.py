@@ -1,13 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
 from typing import List
-
-class ProdutoFornecedor(BaseModel):
-	nome: str
-	tipo: str | None = None
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
-	capacidade: int
+from .produtoDTO import ProdutoFornecedor
 
 class FornecedorCreate(BaseModel):
 	nome: str

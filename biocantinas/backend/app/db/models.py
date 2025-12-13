@@ -19,6 +19,7 @@ class ProdutoFornecedorORM(Base):
     fornecedor_id = Column(Integer, ForeignKey("fornecedores.id"), nullable=False)
     nome = Column(String, nullable=False)
     tipo = Column(String, nullable=True)  # Categoria do produto: fruta, hortícola, proteína, etc.
+    biologico = Column(Boolean, default=True, nullable=False)  # Indica se o produto é biológico
     intervalo_producao_inicio = Column(Date, nullable=False)
     intervalo_producao_fim = Column(Date, nullable=False)
     capacidade = Column(Integer, nullable=False)
@@ -54,6 +55,7 @@ class RefeicaoORM(Base):
     
     ementa = relationship("EmentaORM", back_populates="refeicoes")
     itens = relationship("ItemRefeicaoORM", back_populates="refeicao", cascade="all, delete-orphan")
+    execucoes = relationship("ExecucaoRefeicaoORM", back_populates="refeicao", cascade="all, delete-orphan")
 
 
 class ItemRefeicaoORM(Base):
@@ -66,6 +68,18 @@ class ItemRefeicaoORM(Base):
     
     refeicao = relationship("RefeicaoORM", back_populates="itens")
     produto = relationship("ProdutoFornecedorORM")
+
+
+class ExecucaoRefeicaoORM(Base):
+    __tablename__ = "execucoes_refeicao"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
+    data_execucao = Column(Date, nullable=False)
+    quantidade_produzida = Column(Integer, nullable=False)
+    quantidade_servida = Column(Integer, nullable=False)
+    quantidade_nao_servida = Column(Integer, nullable=False)
+
+    refeicao = relationship("RefeicaoORM", back_populates="execucoes")
 
 
 # TABELAS PARA APROVISIONAMENTO (REQUISITO 4)

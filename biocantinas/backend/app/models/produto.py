@@ -5,6 +5,7 @@ from datetime import date
 class ProdutoFornecedorModel:
     nome: str
     tipo: str | None = None
+    biologico: bool = True
     intervalo_producao_inicio: date = None
     intervalo_producao_fim: date = None
     capacidade: int = 0

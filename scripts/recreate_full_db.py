@@ -12,21 +12,34 @@ from biocantinas.backend.app.db.session import SessionLocal, engine, init_db
 from biocantinas.backend.app.db.models import (
     Base, UserORM, FornecedorORM, ProdutoFornecedorORM, 
     EmentaORM, RefeicaoORM, ItemRefeicaoORM, ReservaRefeicaoORM,
-    HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM
+    HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM, ExecucaoRefeicaoORM
 )
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def delete_database():
-    """Remove o arquivo do banco de dados se existir"""
-    db_path = Path(__file__).parent.parent / "biocantinas" / "backend" / "biocantinas.db"
-    if db_path.exists():
-        print(f"🗑️  Removendo banco de dados existente: {db_path}")
-        os.remove(db_path)
-        print("✅ Banco de dados removido")
-    else:
-        print(f"ℹ️  Nenhum banco existente")
+def delete_database(db_url: str):
+    """Remove arquivos de banco de dados (principal e cb4pia do backend)"""
+    base_dir = Path(__file__).parent.parent
+    targets = set()
+
+    backend_db = base_dir / "biocantinas" / "backend" / "biocantinas.db"
+    targets.add(backend_db)
+
+    if db_url.startswith("sqlite:///"):
+        db_path_str = db_url.replace("sqlite:///", "", 1)
+        db_path = Path(db_path_str)
+        if not db_path.is_absolute():
+            db_path = (base_dir / db_path_str).resolve()
+        targets.add(db_path)
+
+    for path in targets:
+        if path.exists():
+            print(f"Removing existing database: {path}")
+            path.unlink()
+            print("Database removed")
+        else:
+            print(f"No database found at {path}")
 
 def create_users(session):
     """Criar usuários do sistema"""
@@ -40,9 +53,9 @@ def create_users(session):
             is_active=True
         ),
         UserORM(
-            username="nutricionista",
-            hashed_password=pwd_context.hash("nutri123"),
-            role="NUTRICIONISTA",
+            username="dietista",
+            hashed_password=pwd_context.hash("dietista123"),
+            role="DIETISTA",
             is_active=True
         ),
         UserORM(
@@ -571,19 +584,57 @@ def create_historico(session):
     session.commit()
     print(f"✅ {len(historico_dias)} registros de dias e {len(historico_pratos)} registros de pratos criados")
 
+def create_execucoes(session):
+    """Criar dados de execução de refeições para teste de desperdício"""
+    print("\n⚙️  Criando execuções de refeições...")
+    
+    today = date.today()
+    
+    # Buscar algumas refeições para criar execuções
+    refeicoes = session.query(RefeicaoORM).limit(14).all()
+    
+    execucoes = []
+    for idx, refeicao in enumerate(refeicoes):
+        # Simular dados de execução
+        # Refeições têm diferentes níveis de desperdício
+        if idx % 3 == 0:  # 33% com pouco desperdício
+            prod = 100
+            serv = 95
+            nao_serv = 5
+        elif idx % 3 == 1:  # 33% com desperdício médio
+            prod = 100
+            serv = 80
+            nao_serv = 20
+        else:  # 33% com desperdício alto
+            prod = 100
+            serv = 65
+            nao_serv = 35
+        
+        exec_refeicao = ExecucaoRefeicaoORM(
+            refeicao_id=refeicao.id,
+            data_execucao=today - timedelta(days=1),
+            quantidade_produzida=prod,
+            quantidade_servida=serv,
+            quantidade_nao_servida=nao_serv
+        )
+        execucoes.append(exec_refeicao)
+        session.add(exec_refeicao)
+    
+    session.commit()
+    print(f"✅ {len(execucoes)} execuções de refeições criadas")
+
 def main():
     print("=" * 70)
     print("🔄 RECRIANDO BANCO DE DADOS COMPLETO - SEM DUPLICADOS")
     print("=" * 70)
     
-    delete_database()
+    DB_PATH = os.getenv("BIOCANTINAS_DB_PATH", "sqlite:///biocantinas.db")
+    delete_database(DB_PATH)
     
     # Recriar o engine para garantir que não há cache
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    import os
     
-    DB_PATH = os.getenv("BIOCANTINAS_DB_PATH", "sqlite:///biocantinas.db")
     new_engine = create_engine(DB_PATH, connect_args={"check_same_thread": False})
     
     print("\n📦 Criando tabelas...")
@@ -599,6 +650,7 @@ def main():
         create_ementas(session)
         create_reservas(session)
         create_historico(session)
+        create_execucoes(session)
         
         print("\n" + "=" * 70)
         print("✅ BANCO DE DADOS RECRIADO COM SUCESSO!")
@@ -610,12 +662,13 @@ def main():
         print(f"  - Ementas: {session.query(EmentaORM).count()}")
         print(f"  - Refeições: {session.query(RefeicaoORM).count()}")
         print(f"  - Reservas: {session.query(ReservaRefeicaoORM).count()}")
+        print(f"  - Execuções: {session.query(ExecucaoRefeicaoORM).count()}")
         print(f"  - Histórico Dias: {session.query(HistoricoRefeicoesDiaORM).count()}")
         print(f"  - Histórico Pratos: {session.query(HistoricoReservasPratoORM).count()}")
         
         print("\n👤 Credenciais:")
         print("  - Gestor: gestor_cantina / gestor123")
-        print("  - Nutricionista: nutricionista / nutri123")
+        print("  - Dietista: dietista / dietista123")
         print("  - Aluno 1: aluno1 / aluno123")
         print("  - Aluno 2: aluno2 / aluno123")
         print("  - João Silva (Produtor): João Silva / produtor123")

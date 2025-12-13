@@ -18,6 +18,7 @@ class FornecedorRepo:
 			ProdutoFornecedorORM(
 				nome=p.nome,
 				tipo=p.tipo,
+				biologico=p.biologico,
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
 				capacidade=p.capacidade,
@@ -52,6 +53,7 @@ class FornecedorRepo:
 			ProdutoFornecedorModel(
 				nome=p.nome,
 				tipo=p.tipo,
+				biologico=p.biologico,
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
 				capacidade=p.capacidade,
