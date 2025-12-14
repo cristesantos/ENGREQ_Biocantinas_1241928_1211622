@@ -6,6 +6,7 @@ import uvicorn
 import sys
 import os
 from pathlib import Path
+import base64
 
 # ============================================================
 #  1. Ajustar sys.path para garantir import do backend
@@ -37,7 +38,6 @@ def _resolve_api_url():
 API_URL = _resolve_api_url()
 
 st.set_page_config(page_title="BioCantinas - Fornecedores")
-st.info(f"API_URL em uso: {API_URL}")
 
 
 # ============================================================
@@ -99,7 +99,6 @@ if (
     )
     st.session_state.api_thread.start()
     st.session_state.api_thread_started = True
-    st.info("FastAPI iniciada localmente na porta 8000")
 
 
 # ============================================================
@@ -166,34 +165,97 @@ def logout():
 # ============================================================
 
 if not st.session_state.auth_token:
-    st.header("BioCantinas - Autenticação")
+    # Carregar e converter imagem de fundo para base64
+    def get_base64_image(image_path):
+        try:
+            with open(image_path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+        except:
+            return None
     
-    col1, col2 = st.columns(2)
+    # Tentar carregar a imagem
+    img_path = Path(__file__).parent / "fundo_main.jpg"
+    bg_image = get_base64_image(img_path)
     
-    with col1:
-        if st.button("Login", use_container_width=True):
-            st.session_state.show_register = False
-    with col2:
-        if st.button("Registrar", use_container_width=True):
-            st.session_state.show_register = True
+    if bg_image:
+        # CSS para adicionar imagem de fundo com 50% de opacidade
+        st.markdown(f"""
+            <style>
+            .stApp {{
+                background-image: url("data:image/jpeg;base64,{bg_image}");
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                background-attachment: fixed;
+            }}
+            .stApp::before {{
+                content: "";
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255, 255, 255, 0.5);
+                z-index: -1;
+                pointer-events: none;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
     
-    if st.session_state.show_register:
-        st.subheader("Criar nova conta")
-        reg_username = st.text_input("Usuário (registro)", key="reg_username")
-        reg_password = st.text_input("Senha (registro)", type="password", key="reg_password")
-        reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR", "GESTOR_CANTINA", "DIETISTA"], key="reg_role")
+    # Centralizar e reduzir o tamanho da área de login
+    col_left, col_center, col_right = st.columns([1, 2, 1])
+    
+    with col_center:
+        # Container com fundo branco
+        st.markdown("""
+            <style>
+            div[data-testid="column"]:nth-child(2) {{
+                background-color: white !important;
+                padding: 2rem !important;
+                border-radius: 15px !important;
+                box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+            }}
+            div[data-testid="column"]:nth-child(2) > div {{
+                background-color: white !important;
+            }}
+            </style>
+        """, unsafe_allow_html=True)
         
-        # Mostrar formulário adicional para PRODUTOR assim que for selecionado
-        if reg_role == "PRODUTOR":
-            st.divider()
-            st.subheader("📝 Dados do Produtor")
-            st.info("Complete os dados do seu perfil de produtor")
+        st.header("🌱 BioCantinas")
+        st.caption("Sistema de Gestão de Cantinas Biológicas")
+        
+        # Botões para alternar entre Login e Registro
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("🔑 Login", use_container_width=True, type="primary" if not st.session_state.show_register else "secondary"):
+                st.session_state.show_register = False
+                st.rerun()
+        with col2:
+            if st.button("📝 Registrar", use_container_width=True, type="primary" if st.session_state.show_register else "secondary"):
+                st.session_state.show_register = True
+                st.rerun()
+        
+        st.divider()
+        
+        # Mostrar apenas o formulário correspondente
+        if st.session_state.show_register:
+            st.subheader("Criar nova conta")
+            reg_username = st.text_input("Usuário", key="reg_username")
+            reg_password = st.text_input("Senha", type="password", key="reg_password")
+            reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR", "GESTOR_CANTINA", "DIETISTA"], key="reg_role")
             
-            produtor_nome = st.text_input("Nome do Produtor/Empresa", key="produtor_nome")
-            st.caption(f"📅 Data de Inscrição: {date.today().strftime('%Y-%m-%d')}")
-            
-            # Lista fixa de produtos com seus tipos
-            PRODUTOS_DISPONIVEIS = {
+            # Mostrar formulário adicional para PRODUTOR assim que for selecionado
+            if reg_role == "PRODUTOR":
+                st.divider()
+                st.subheader("📝 Dados do Produtor")
+                st.info("Complete os dados do seu perfil de produtor")
+                
+                produtor_nome = st.text_input("Nome do Produtor/Empresa", key="produtor_nome")
+                st.caption(f"📅 Data de Inscrição: {date.today().strftime('%Y-%m-%d')}")
+                
+                # Lista fixa de produtos com seus tipos
+                PRODUTOS_DISPONIVEIS = {
                 "Frutas": {
                     "Maçã": "Fruta",
                     "Pera": "Fruta",
@@ -252,119 +314,120 @@ if not st.session_state.auth_token:
                     "Especiarias": "Outro"
                 }
             }
-            
-            # Criar lista plana de produtos
-            todos_produtos = []
-            for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
-                todos_produtos.extend(produtos.keys())
-            
-            st.markdown("### 🌱 Produtos")
-            num_produtos = st.number_input("Quantos produtos deseja cadastrar?", min_value=1, max_value=10, value=1, key="num_produtos")
-            
-            produtos_list = []
-            for i in range(int(num_produtos)):
-                with st.expander(f"Produto {i+1}", expanded=(i==0)):
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        nome_produto = st.selectbox(
-                            "Selecione o Produto", 
-                            [""] + todos_produtos,
-                            key=f"prod_nome_{i}"
-                        )
-                        
-                        # Determinar automaticamente o tipo baseado no produto selecionado
-                        tipo_produto = None
-                        if nome_produto:
-                            for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
-                                if nome_produto in produtos:
-                                    tipo_produto = produtos[nome_produto]
-                                    break
-                        
-                        if tipo_produto:
-                            st.info(f"📦 Tipo: **{tipo_produto}**")
-                        
-                        biologico = st.checkbox("Produto Biológico", value=True, key=f"prod_bio_{i}")
-                    with col2:
-                        capacidade = st.number_input("Capacidade (kg)", min_value=1, value=100, key=f"prod_cap_{i}")
-                        data_inicio = st.date_input("Início da Produção", key=f"prod_inicio_{i}")
-                        data_fim = st.date_input("Fim da Produção", key=f"prod_fim_{i}")
-                    
-                    if nome_produto and tipo_produto:
-                        produtos_list.append({
-                            "nome": nome_produto,
-                            "tipo": tipo_produto,
-                            "biologico": biologico,
-                            "capacidade": capacidade,
-                            "intervalo_producao_inicio": str(data_inicio),
-                            "intervalo_producao_fim": str(data_fim)
-                        })
-            
-            # Botão de criar conta para PRODUTOR (com validação completa)
-            if st.button("Criar conta"):
-                if reg_username and reg_password and produtor_nome and len(produtos_list) > 0:
-                    try:
-                        # 1. Criar usuário
-                        user_response = requests.post(
-                            f"{API_URL}/auth/signup",
-                            json={"username": reg_username, "password": reg_password, "role": "PRODUTOR"}
-                        )
-                        
-                        if user_response.status_code in [200, 201]:
-                            # 2. Fazer login para obter token
-                            login_response = requests.post(
-                                f"{API_URL}/auth/login",
-                                json={"username": reg_username, "password": reg_password}
+                
+                # Criar lista plana de produtos
+                todos_produtos = []
+                for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
+                    todos_produtos.extend(produtos.keys())
+                
+                st.markdown("### 🌱 Produtos")
+                num_produtos = st.number_input("Quantos produtos deseja cadastrar?", min_value=1, max_value=10, value=1, key="num_produtos")
+                
+                produtos_list = []
+                for i in range(int(num_produtos)):
+                    with st.expander(f"Produto {i+1}", expanded=(i==0)):
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            nome_produto = st.selectbox(
+                                "Selecione o Produto", 
+                                [""] + todos_produtos,
+                                key=f"prod_nome_{i}"
                             )
                             
-                            if login_response.status_code == 200:
-                                token = login_response.json()["access_token"]
-                                headers = {"Authorization": f"Bearer {token}"}
-                                
-                                # 3. Criar fornecedor (usando nome customizado)
-                                fornecedor_payload = {
-                                    "nome": produtor_nome,
-                                    "data_inscricao": str(date.today()),
-                                    "produtos": produtos_list
-                                }
-                                
-                                fornecedor_response = requests.post(
-                                    f"{API_URL}/fornecedores",
-                                    json=fornecedor_payload,
-                                    headers=headers
+                            # Determinar automaticamente o tipo baseado no produto selecionado
+                            tipo_produto = None
+                            if nome_produto:
+                                for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
+                                    if nome_produto in produtos:
+                                        tipo_produto = produtos[nome_produto]
+                                        break
+                            
+                            if tipo_produto:
+                                st.info(f"📦 Tipo: **{tipo_produto}**")
+                            
+                            biologico = st.checkbox("Produto Biológico", value=True, key=f"prod_bio_{i}")
+                        with col2:
+                            capacidade = st.number_input("Capacidade (kg)", min_value=1, value=100, key=f"prod_cap_{i}")
+                            data_inicio = st.date_input("Início da Produção", key=f"prod_inicio_{i}")
+                            data_fim = st.date_input("Fim da Produção", key=f"prod_fim_{i}")
+                        
+                        if nome_produto and tipo_produto:
+                            produtos_list.append({
+                                "nome": nome_produto,
+                                "tipo": tipo_produto,
+                                "biologico": biologico,
+                                "capacidade": capacidade,
+                                "intervalo_producao_inicio": str(data_inicio),
+                                "intervalo_producao_fim": str(data_fim)
+                            })
+                
+                # Botão de criar conta para PRODUTOR (com validação completa)
+                if st.button("Criar conta", use_container_width=True, type="primary"):
+                    if reg_username and reg_password and produtor_nome and len(produtos_list) > 0:
+                        try:
+                            # 1. Criar usuário
+                            user_response = requests.post(
+                                f"{API_URL}/auth/signup",
+                                json={"username": reg_username, "password": reg_password, "role": "PRODUTOR"}
+                            )
+                            
+                            if user_response.status_code in [200, 201]:
+                                # 2. Fazer login para obter token
+                                login_response = requests.post(
+                                    f"{API_URL}/auth/login",
+                                    json={"username": reg_username, "password": reg_password}
                                 )
                                 
-                                if fornecedor_response.status_code in [200, 201]:
-                                    st.success("✅ Cadastro de produtor realizado com sucesso!")
-                                    st.info("Aguarde a aprovação do gestor. Faça login para acessar sua área.")
-                                    st.session_state.show_register = False
-                                    st.rerun()
+                                if login_response.status_code == 200:
+                                    token = login_response.json()["access_token"]
+                                    headers = {"Authorization": f"Bearer {token}"}
+                                    
+                                    # 3. Criar fornecedor (usando nome customizado)
+                                    fornecedor_payload = {
+                                        "nome": produtor_nome,
+                                        "data_inscricao": str(date.today()),
+                                        "produtos": produtos_list
+                                    }
+                                    
+                                    fornecedor_response = requests.post(
+                                        f"{API_URL}/fornecedores",
+                                        json=fornecedor_payload,
+                                        headers=headers
+                                    )
+                                    
+                                    if fornecedor_response.status_code in [200, 201]:
+                                        st.success("✅ Cadastro de produtor realizado com sucesso!")
+                                        st.info("Aguarde a aprovação do gestor. Faça login para acessar sua área.")
+                                        st.session_state.show_register = False
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Erro ao cadastrar fornecedor: {fornecedor_response.json().get('detail', 'Erro desconhecido')}")
                                 else:
-                                    st.error(f"Erro ao cadastrar fornecedor: {fornecedor_response.json().get('detail', 'Erro desconhecido')}")
+                                    st.error("Erro ao fazer login automático")
                             else:
-                                st.error("Erro ao fazer login automático")
-                        else:
-                            st.error(f"Erro no registro: {user_response.json().get('detail', 'Erro desconhecido')}")
-                    except Exception as e:
-                        st.error(f"Erro ao finalizar cadastro: {str(e)}")
-                else:
-                    st.error("Preencha todos os campos: usuário, senha, nome do produtor e pelo menos um produto!")
-        
+                                st.error(f"Erro no registro: {user_response.json().get('detail', 'Erro desconhecido')}")
+                        except Exception as e:
+                            st.error(f"Erro ao finalizar cadastro: {str(e)}")
+                    else:
+                        st.error("Preencha todos os campos: usuário, senha, nome do produtor e pelo menos um produto!")
+            
+            else:
+                # Para outros papéis (não PRODUTOR), botão simples
+                if st.button("Criar conta", use_container_width=True, type="primary"):
+                    if reg_username and reg_password:
+                        register(reg_username, reg_password, reg_role)
+                    else:
+                        st.error("Preencha todos os campos!")
         else:
-            # Para outros papéis (não PRODUTOR), botão simples
-            if st.button("Criar conta"):
-                if reg_username and reg_password:
-                    register(reg_username, reg_password, reg_role)
+            # Formulário de Login
+            st.subheader("Entrar na conta")
+            username = st.text_input("Usuário", key="username")
+            password = st.text_input("Senha", type="password", key="password")
+            if st.button("Entrar", use_container_width=True, type="primary"):
+                if username and password:
+                    login(username, password)
                 else:
                     st.error("Preencha todos os campos!")
-    else:
-        st.subheader("Fazer login")
-        username = st.text_input("Usuário", key="username")
-        password = st.text_input("Senha", type="password", key="password")
-        if st.button("Entrar"):
-            if username and password:
-                login(username, password)
-            else:
-                st.error("Preencha todos os campos!")
     st.stop()
 
 
