@@ -181,21 +181,73 @@ def pagina_produtor(API_URL, auth_token):
                                 
                                 st.success(f"✅ Previsão gerada para {dados['periodo']}")
                                 
-                                # Filtrar apenas produtos que o fornecedor produz
+                                # Obter todos os fornecedores para distribuir quantidades
+                                try:
+                                    fornecedores_response = requests.get(
+                                        f"{API_URL}/fornecedores",
+                                        headers=headers
+                                    )
+                                    todos_fornecedores = fornecedores_response.json() if fornecedores_response.status_code == 200 else []
+                                except:
+                                    todos_fornecedores = []
+                                
+                                # Criar mapa de fornecedor_id -> fornecedor
+                                fornecedores_map = {f["id"]: f for f in todos_fornecedores}
+                                
+                                # Filtrar apenas produtos que o fornecedor produz e calcular quantidade a pedir
                                 necessidades = dados.get("necessidades_previstas_historico", {})
                                 necessidades_filtradas = []
                                 
-                                for produto, quantidade in necessidades.items():
+                                for produto, quantidade_total in necessidades.items():
                                     produto_lower = produto.lower()
                                     if produto_lower in meus_produtos:
-                                        prioridade = prioridade_map.get(produto_lower)
-                                        capacidade = capacidade_map.get(produto_lower, 0)
-                                        necessidades_filtradas.append({
-                                            "Produto": produto,
-                                            "Quantidade Necessária (kg)": quantidade,
-                                            "Prioridade": prioridade if prioridade else "N/A",
-                                            "Capacidade (kg)": capacidade
-                                        })
+                                        # Obter ordem de prioridade para este produto
+                                        ordem_produto = None
+                                        for ordem_item in ordem_data:
+                                            if ordem_item["produto"].lower() == produto_lower:
+                                                ordem_produto = ordem_item
+                                                break
+                                        
+                                        if ordem_produto:
+                                            fornecedores_ids = ordem_produto.get("fornecedores_ids", [])
+                                            
+                                            # Calcular quanto cada fornecedor deve fornecer
+                                            quantidade_restante = quantidade_total
+                                            quantidade_para_mim = 0
+                                            
+                                            for idx, forn_id in enumerate(fornecedores_ids):
+                                                if quantidade_restante <= 0:
+                                                    break
+                                                
+                                                # Obter capacidade do fornecedor para este produto
+                                                fornecedor = fornecedores_map.get(forn_id)
+                                                if fornecedor:
+                                                    for p in fornecedor.get("produtos", []):
+                                                        if p["nome"].lower() == produto_lower:
+                                                            capacidade_forn = p.get("capacidade", 0)
+                                                            
+                                                            # Se for o fornecedor atual (eu)
+                                                            if forn_id == perfil["id"]:
+                                                                # Calcular quanto devo fornecer
+                                                                quantidade_para_mim = min(capacidade_forn, quantidade_restante)
+                                                                quantidade_restante -= quantidade_para_mim
+                                                            else:
+                                                                # Fornecedor com prioridade maior já consome da necessidade
+                                                                quantidade_consumida = min(capacidade_forn, quantidade_restante)
+                                                                quantidade_restante -= quantidade_consumida
+                                                            break
+                                            
+                                            # Só mostrar se houver quantidade para mim
+                                            if quantidade_para_mim > 0:
+                                                prioridade = prioridade_map.get(produto_lower)
+                                                capacidade = capacidade_map.get(produto_lower, 0)
+                                                necessidades_filtradas.append({
+                                                    "Produto": produto,
+                                                    "Quantidade Total Necessária (kg)": quantidade_total,
+                                                    "Quantidade a Fornecer (kg)": quantidade_para_mim,
+                                                    "Prioridade": prioridade if prioridade else "N/A",
+                                                    "Capacidade (kg)": capacidade
+                                                })
                                 
                                 if necessidades_filtradas:
                                     # Ordenar por prioridade (valores menores = maior prioridade)
@@ -206,13 +258,19 @@ def pagina_produtor(API_URL, auth_token):
                                         )
                                     )
                                     
-                                    st.markdown("**📊 Necessidades dos Produtos que Você Produz**")
-                                    st.caption("Ordenado por prioridade de fornecimento e capacidade")
+                                    st.markdown("**📊 Necessidades dos Produtos que Você Deve Fornecer**")
+                                    st.caption("Calculado com base na sua prioridade e capacidade disponível")
                                     
                                     df_filtrado = pd.DataFrame(necessidades_filtradas)
-                                    st.dataframe(df_filtrado, use_container_width=True, hide_index=True)
+                                    # Mostrar apenas as colunas: Produto, Quantidade a Fornecer e Capacidade
+                                    df_display = df_filtrado[["Produto", "Quantidade a Fornecer (kg)", "Capacidade (kg)"]]
+                                    st.dataframe(df_display, use_container_width=True, hide_index=True)
+                                    
+                                    # Resumo
+                                    total_a_fornecer = sum(item["Quantidade a Fornecer (kg)"] for item in necessidades_filtradas)
+                                    st.metric("Total a Fornecer", f"{total_a_fornecer:.2f} kg")
                                 else:
-                                    st.info("ℹ️ Nenhum dos seus produtos é necessário para este período.")
+                                    st.info("ℹ️ Nenhum dos seus produtos é necessário para este período ou sua capacidade já foi atendida por fornecedores de maior prioridade.")
                             
                             else:
                                 st.error(f"❌ Erro {response.status_code}: {response.json().get('detail', 'Erro desconhecido')}")
@@ -259,42 +317,111 @@ def pagina_produtor(API_URL, auth_token):
 
         st.subheader("Produtos")
 
-        # Lista única de produtos (sem categorias)
-        produtos = [
-            "kiwi", "mirtilo", "frutos vermelhos", "cereja", "maçã", "pera", "castanha",
-            "couves", "alface", "rúcula", "espinafre", "tomate", "pimento", "beringela",
-            "cenoura", "nabo", "beterraba", "abóbora", "curgete", "bovino", "suíno",
-            "ovino", "caprino", "ovos de galinhas ao ar livre", "mel", "cogumelo shiitake",
-            "frango", "carne de vaca", "peru", "vitela"
-        ]
+        # Lista fixa de produtos com seus tipos (mesma do formulário de registro)
+        PRODUTOS_DISPONIVEIS = {
+            "Frutas": {
+                "Maçã": "Fruta",
+                "Pera": "Fruta",
+                "Laranja": "Fruta",
+                "Banana": "Fruta",
+                "Morango": "Fruta",
+                "Uva": "Fruta",
+                "Pêssego": "Fruta",
+                "Ameixa": "Fruta",
+                "Melancia": "Fruta",
+                "Melão": "Fruta"
+            },
+            "Hortícolas": {
+                "Tomate": "Hortícola",
+                "Alface": "Hortícola",
+                "Cenoura": "Hortícola",
+                "Batata": "Hortícola",
+                "Cebola": "Hortícola",
+                "Couve": "Hortícola",
+                "Brócolos": "Hortícola",
+                "Pimento": "Hortícola",
+                "Beringela": "Hortícola",
+                "Abóbora": "Hortícola",
+                "Feijão-verde": "Hortícola",
+                "Espinafre": "Hortícola"
+            },
+            "Proteínas": {
+                "Frango": "Proteína",
+                "Carne de Vaca": "Proteína",
+                "Carne de Porco": "Proteína",
+                "Peixe": "Proteína",
+                "Ovos": "Proteína",
+                "Tofu": "Proteína",
+                "Grão-de-bico": "Proteína",
+                "Lentilhas": "Proteína"
+            },
+            "Cereais": {
+                "Arroz": "Cereais",
+                "Massa": "Cereais",
+                "Pão": "Cereais",
+                "Aveia": "Cereais",
+                "Quinoa": "Cereais",
+                "Milho": "Cereais"
+            },
+            "Laticínios": {
+                "Leite": "Laticínios",
+                "Queijo": "Laticínios",
+                "Iogurte": "Laticínios",
+                "Manteiga": "Laticínios",
+                "Nata": "Laticínios"
+            },
+            "Outros": {
+                "Azeite": "Outro",
+                "Mel": "Outro",
+                "Ervas Aromáticas": "Outro",
+                "Especiarias": "Outro"
+            }
+        }
 
-        # Ordenar alfabeticamente (independente de maiúsculas/minúsculas)
-        produtos = sorted(produtos, key=lambda s: s.lower())
+        # Criar lista plana de produtos
+        todos_produtos = []
+        for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
+            todos_produtos.extend(produtos.keys())
 
-        prod_nome = st.selectbox("Produto", options=produtos)
-        # Opcional: permitir especificar outro texto caso necessário
-        if st.checkbox("Outro (especificar manualmente)"):
-            prod_nome = st.text_input("Especifique o produto", value=prod_nome)
+        prod_nome = st.selectbox("Produto", options=[""] + todos_produtos)
+        
+        # Determinar automaticamente o tipo baseado no produto selecionado
+        tipo_produto = None
+        if prod_nome:
+            for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
+                if prod_nome in produtos:
+                    tipo_produto = produtos[prod_nome]
+                    break
+        
+        if tipo_produto:
+            st.info(f"📦 Tipo: **{tipo_produto}**")
+        
+        biologico = st.checkbox("Produto Biológico", value=True)
 
         prod_ini = st.date_input("Início intervalo produção", value=date.today())
         prod_fim = st.date_input("Fim intervalo produção", value=date.today())
         capacidade = st.number_input("Capacidade (Kg)", min_value=0, value=0)
 
         if st.button("Submeter inscrição"):
-            payload = {
-                "nome": nome,
-                "data_inscricao": str(data_inscricao),
-                "produtos": [
-                    {
-                        "nome": prod_nome,
-                        "intervalo_producao_inicio": str(prod_ini),
-                        "intervalo_producao_fim": str(prod_fim),
-                        "capacidade": int(capacidade),
-                    }
-                ],
-            }
-            try:
-                novo = create_fornecedor(API_URL, auth_token, payload)
-                st.success(f"Produtor criado com id {novo['id']} (aguarda aprovação).")
-            except Exception as e:
-                st.error(f"❌ Erro ao criar produtor: {str(e)}")
+            if prod_nome and tipo_produto:
+                payload = {
+                    "nome": nome,
+                    "data_inscricao": str(data_inscricao),
+                    "produtos": [
+                        {
+                            "nome": prod_nome,
+                            "tipo": tipo_produto,
+                            "biologico": biologico,
+                            "intervalo_producao_inicio": str(prod_ini),
+                            "intervalo_producao_fim": str(prod_fim),
+                            "capacidade": int(capacidade),
+                        }
+                    ],
+                }
+                try:
+                    novo = create_fornecedor(API_URL, auth_token, payload)
+                    st.success(f"Produtor criado com id {novo['id']} (aguarda aprovação).")
+                except Exception as e:
+                    st.error(f"❌ Erro ao criar produtor: {str(e)}")
+            else:
+                st.error("Selecione um produto válido!")

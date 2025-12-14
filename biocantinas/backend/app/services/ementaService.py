@@ -93,7 +93,8 @@ class EmentaService:
         produtos_por_tipo = {}
         for f in aprovados:
             for p in f.produtos:
-                tipo = p.tipo or "Sem categoria"
+                # Normalizar tipo para lowercase
+                tipo = (p.tipo or "Sem categoria").lower()
                 if tipo not in produtos_por_tipo:
                     produtos_por_tipo[tipo] = []
                 produtos_por_tipo[tipo].append({
@@ -114,8 +115,9 @@ class EmentaService:
         descricao_partes = []
         
         # Proteína (obrigatória)
-        if "proteína" in produtos_por_tipo and produtos_por_tipo["proteína"]:
-            proteina = choice(produtos_por_tipo["proteína"])
+        proteinas = produtos_por_tipo.get("proteína", [])
+        if proteinas:
+            proteina = choice(proteinas)
             itens.append(ItemRefeicaoModel(
                 ingrediente=proteina["nome"],
                 produto_id=None,
@@ -123,15 +125,12 @@ class EmentaService:
             ))
             descricao_partes.append(proteina["nome"])
         
-        # Hortícola/Acompanhamento
-        horticolas = []
-        for tipo_key in ["hortícola-fruto", "hortícola-folha", "tubérculo"]:
-            if tipo_key in produtos_por_tipo:
-                horticolas.extend(produtos_por_tipo[tipo_key])
-        
+        # Hortícola (obrigatória)
+        horticolas = produtos_por_tipo.get("hortícola", [])
         if horticolas:
             # Escolher 1-2 hortícolas
-            selecionados = sample(horticolas, min(2, len(horticolas)))
+            num_horticolas = min(2, len(horticolas))
+            selecionados = sample(horticolas, num_horticolas)
             for h in selecionados:
                 itens.append(ItemRefeicaoModel(
                     ingrediente=h["nome"],
@@ -140,15 +139,40 @@ class EmentaService:
                 ))
                 descricao_partes.append(h["nome"])
         
-        # Fruta (sobremesa, mais comum no almoço)
-        if tipo == "almoço" and "fruta" in produtos_por_tipo and produtos_por_tipo["fruta"]:
-            fruta = choice(produtos_por_tipo["fruta"])
+        # Cereais (acompanhamento)
+        cereais = produtos_por_tipo.get("cereais", [])
+        if cereais:
+            cereal = choice(cereais)
             itens.append(ItemRefeicaoModel(
-                ingrediente=fruta["nome"],
+                ingrediente=cereal["nome"],
                 produto_id=None,
-                quantidade_estimada=2
+                quantidade_estimada=4
             ))
-            descricao_partes.append(fruta["nome"])
+            descricao_partes.append(cereal["nome"])
+        
+        # Fruta (sobremesa, mais comum no almoço)
+        if tipo == "almoço":
+            frutas = produtos_por_tipo.get("fruta", [])
+            if frutas:
+                fruta = choice(frutas)
+                itens.append(ItemRefeicaoModel(
+                    ingrediente=fruta["nome"],
+                    produto_id=None,
+                    quantidade_estimada=2
+                ))
+                descricao_partes.append(fruta["nome"])
+        
+        # Laticínios (opcional, mais comum no jantar)
+        if tipo == "jantar":
+            laticinios = produtos_por_tipo.get("laticínios", [])
+            if laticinios:
+                laticinio = choice(laticinios)
+                itens.append(ItemRefeicaoModel(
+                    ingrediente=laticinio["nome"],
+                    produto_id=None,
+                    quantidade_estimada=2
+                ))
+                descricao_partes.append(laticinio["nome"])
         
         # Gerar descrição
         descricao = f"{dia_nome} - {tipo.capitalize()}: " + " com ".join(descricao_partes) if descricao_partes else f"{dia_nome} - {tipo.capitalize()}"

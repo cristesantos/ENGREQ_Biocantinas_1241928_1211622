@@ -47,38 +47,62 @@ def create_users(session):
     
     users = [
         UserORM(
-            username="gestor_cantina",
-            hashed_password=pwd_context.hash("gestor123"),
+            username="gestor",
+            hashed_password=pwd_context.hash("1"),
             role="GESTOR_CANTINA",
             is_active=True
         ),
         UserORM(
             username="dietista",
-            hashed_password=pwd_context.hash("dietista123"),
+            hashed_password=pwd_context.hash("1"),
             role="DIETISTA",
             is_active=True
         ),
         UserORM(
             username="aluno1",
-            hashed_password=pwd_context.hash("aluno123"),
+            hashed_password=pwd_context.hash("1"),
             role="ALUNO",
             is_active=True
         ),
         UserORM(
             username="aluno2",
-            hashed_password=pwd_context.hash("aluno123"),
+            hashed_password=pwd_context.hash("1"),
             role="ALUNO",
             is_active=True
         ),
         UserORM(
-            username="João Silva",
-            hashed_password=pwd_context.hash("produtor123"),
+            username="joao",
+            hashed_password=pwd_context.hash("1"),
             role="PRODUTOR",
             is_active=True
         ),
         UserORM(
-            username="Maria Carvalho",
-            hashed_password=pwd_context.hash("produtor123"),
+            username="maria",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="pedro",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="ana",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="carlos",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="lucas",
+            hashed_password=pwd_context.hash("1"),
             role="PRODUTOR",
             is_active=True
         ),
@@ -88,103 +112,110 @@ def create_users(session):
         session.add(user)
     session.commit()
     print(f"✅ {len(users)} usuários criados")
+    
+    # Return users for linking with suppliers
+    return {user.username: user.id for user in users}
 
-def create_fornecedores(session):
+def create_fornecedores(session, user_ids):
     """Criar fornecedores e seus produtos"""
     print("\n🚜 Criando fornecedores...")
     
     today = date.today()
     
+    # Fornecedores vinculados aos usuários produtores via usuario_id
     fornecedores_data = [
-        # Produtor com maior prioridade (registro mais antigo) para curgete e frango
-        ("João Silva", today - timedelta(days=30), True, [
-            {"nome": "curgete", "tipo": "hortícola-fruto", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 200},
-            {"nome": "frango", "tipo": "carne", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 300},
-        ]),
-        # Produtora com maior prioridade para carne de vaca
-        ("Maria Carvalho", today - timedelta(days=35), True, [
-            {"nome": "carne de vaca", "tipo": "carne", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 250},
-        ]),
-        ("João Silva Frutas", today - timedelta(days=10), True, [
-            {"nome": "maçã", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=90), "capacidade": 100},
-            {"nome": "pera", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=60), "capacidade": 50},
-        ]),
-        ("Maria Oliveira Berries", today - timedelta(days=9), True, [
-            {"nome": "morango", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 40},
-            {"nome": "mirtilo", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=45), "capacidade": 25},
-        ]),
-        ("Pedro Santos Citrinos", today - timedelta(days=9), True, [
-            {"nome": "laranja", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80},
-            {"nome": "limão", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 60},
-        ]),
-        ("Ana Costa Tropicais", today - timedelta(days=8), True, [
-            {"nome": "banana", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=90), "capacidade": 70},
-            {"nome": "abacaxi", "tipo": "fruta", "inicio": today, "fim": today + timedelta(days=45), "capacidade": 30},
-        ]),
-        ("Luís Pereira Folhas", today - timedelta(days=7), True, [
-            {"nome": "alface", "tipo": "hortícola-folha", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 40},
-            {"nome": "rúcula", "tipo": "hortícola-folha", "inicio": today, "fim": today + timedelta(days=15), "capacidade": 25},
-        ]),
-        ("Carla Mendes Verdes", today - timedelta(days=6), True, [
-            {"nome": "couve", "tipo": "hortícola-folha", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 50},
-            {"nome": "espinafre", "tipo": "hortícola-folha", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 30},
-        ]),
-        ("Tiago Ramos Tomates", today - timedelta(days=5), True, [
-            {"nome": "tomate", "tipo": "hortícola-fruto", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 100},
-            {"nome": "pimento", "tipo": "hortícola-fruto", "inicio": today, "fim": today + timedelta(days=45), "capacidade": 35},
-        ]),
-        ("Sofia Almeida Legumes", today - timedelta(days=4), True, [
-            {"nome": "curgete", "tipo": "hortícola-fruto", "inicio": today, "fim": today + timedelta(days=35), "capacidade": 40},
-            {"nome": "beringela", "tipo": "hortícola-fruto", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 25},
-        ]),
-        ("Bruno Ferreira Raízes", today - timedelta(days=3), True, [
-            {"nome": "cenoura", "tipo": "tubérculo", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80},
-            {"nome": "beterraba", "tipo": "tubérculo", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 50},
-        ]),
-        ("Rita Gomes Tubérculos", today - timedelta(days=3), True, [
-            {"nome": "batata", "tipo": "tubérculo", "inicio": today, "fim": today + timedelta(days=150), "capacidade": 150},
-            {"nome": "batata doce", "tipo": "tubérculo", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 60},
-        ]),
-        ("Carnes Nobre", today - timedelta(days=2), True, [
-            {"nome": "frango", "tipo": "carne", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 200},
-            {"nome": "peru", "tipo": "carne", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 100},
-        ]),
-        ("Vaca Premium", today - timedelta(days=2), True, [
-            {"nome": "carne de vaca", "tipo": "carne", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150},
-            {"nome": "vitela", "tipo": "carne", "inicio": today, "fim": today + timedelta(days=180), "capacidade": 80},
-        ]),
-        ("Peixaria do Mar", today - timedelta(days=1), True, [
-            {"nome": "salmão", "tipo": "peixe", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 80},
-            {"nome": "pescada", "tipo": "peixe", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 70},
-        ]),
-        ("Oceano Azul", today - timedelta(days=1), True, [
-            {"nome": "bacalhau", "tipo": "peixe", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 60},
-            {"nome": "dourada", "tipo": "peixe", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 50},
-        ]),
-        ("Lacticínios Central", today, True, [
-            {"nome": "leite", "tipo": "laticínio", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 300},
-            {"nome": "queijo", "tipo": "laticínio", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 100},
-        ]),
-        ("Iogurtes Naturais", today, True, [
-            {"nome": "iogurte natural", "tipo": "laticínio", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 200},
-            {"nome": "iogurte grego", "tipo": "laticínio", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 80},
-        ]),
+        # João - Frutas variadas
+        {
+            "nome": "João Silva Frutas",
+            "usuario_id": user_ids["joao"],
+            "data_inscricao": today - timedelta(days=30),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Maçã", "tipo": "Fruta", "inicio": today, "fim": today + timedelta(days=90), "capacidade": 100, "biologico": True},
+                {"nome": "Pera", "tipo": "Fruta", "inicio": today, "fim": today + timedelta(days=60), "capacidade": 50, "biologico": True},
+                {"nome": "Laranja", "tipo": "Fruta", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80, "biologico": True},
+            ]
+        },
+        # Maria - Hortícolas
+        {
+            "nome": "Maria Carvalho Hortas",
+            "usuario_id": user_ids["maria"],
+            "data_inscricao": today - timedelta(days=35),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Tomate", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 100, "biologico": True},
+                {"nome": "Alface", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 40, "biologico": True},
+                {"nome": "Cenoura", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80, "biologico": True},
+                {"nome": "Couve", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 50, "biologico": True},
+            ]
+        },
+        # Pedro - Proteínas
+        {
+            "nome": "Pedro Santos Carnes",
+            "usuario_id": user_ids["pedro"],
+            "data_inscricao": today - timedelta(days=25),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Frango", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 300, "biologico": True},
+                {"nome": "Carne de Vaca", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 250, "biologico": True},
+                {"nome": "Ovos", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 500, "biologico": True},
+            ]
+        },
+        # Ana - Cereais e Laticínios
+        {
+            "nome": "Ana Costa Cereais e Lacticínios",
+            "usuario_id": user_ids["ana"],
+            "data_inscricao": today - timedelta(days=20),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Arroz", "tipo": "Cereais", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 200, "biologico": True},
+                {"nome": "Massa", "tipo": "Cereais", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
+                {"nome": "Leite", "tipo": "Laticínios", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 300, "biologico": True},
+                {"nome": "Queijo", "tipo": "Laticínios", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 100, "biologico": True},
+            ]
+        },
+        # Carlos - Mix de produtos
+        {
+            "nome": "Carlos Ribeiro Agrobio",
+            "usuario_id": user_ids["carlos"],
+            "data_inscricao": today - timedelta(days=15),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Batata", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=150), "capacidade": 150, "biologico": True},
+                {"nome": "Banana", "tipo": "Fruta", "inicio": today, "fim": today + timedelta(days=90), "capacidade": 70, "biologico": True},
+                {"nome": "Peixe", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 120, "biologico": True},
+                {"nome": "Pão", "tipo": "Cereais", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 200, "biologico": True},
+                {"nome": "Iogurte", "tipo": "Laticínios", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
+            ]
+        },
+        # Lucas - Produtor de Frango (menor prioridade - registro mais recente)
+        {
+            "nome": "Lucas Ferreira Aves",
+            "usuario_id": user_ids["lucas"],
+            "data_inscricao": today - timedelta(days=10),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Frango", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
+            ]
+        },
     ]
     
-    for nome, data_inscricao, aprovado, produtos in fornecedores_data:
+    for data in fornecedores_data:
         fornecedor = FornecedorORM(
-            nome=nome,
-            data_inscricao=data_inscricao,
-            aprovado=aprovado
+            nome=data["nome"],
+            usuario_id=data["usuario_id"],
+            data_inscricao=data["data_inscricao"],
+            aprovado=data["aprovado"]
         )
         session.add(fornecedor)
         session.flush()
         
-        for p in produtos:
+        for p in data["produtos"]:
             produto = ProdutoFornecedorORM(
                 fornecedor_id=fornecedor.id,
                 nome=p['nome'],
                 tipo=p['tipo'],
+                biologico=p['biologico'],
                 intervalo_producao_inicio=p['inicio'],
                 intervalo_producao_fim=p['fim'],
                 capacidade=p['capacidade']
@@ -645,8 +676,8 @@ def main():
     session = SessionFactory()
     
     try:
-        create_users(session)
-        create_fornecedores(session)
+        user_ids = create_users(session)
+        create_fornecedores(session, user_ids)
         create_ementas(session)
         create_reservas(session)
         create_historico(session)
