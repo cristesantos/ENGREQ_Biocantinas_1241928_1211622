@@ -10,8 +10,10 @@ class FornecedorORM(Base):
     nome = Column(String, nullable=False)
     data_inscricao = Column(Date, nullable=False)
     aprovado = Column(Boolean, default=False, nullable=False)
+    usuario_id = Column(Integer, ForeignKey("utilizadores.id"), nullable=True)  # Vínculo com o usuário
 
     produtos = relationship("ProdutoFornecedorORM", back_populates="fornecedor", cascade="all, delete-orphan")
+    usuario = relationship("UserORM", foreign_keys=[usuario_id])
 
 class ProdutoFornecedorORM(Base):
     __tablename__ = "produtos_fornecedor"

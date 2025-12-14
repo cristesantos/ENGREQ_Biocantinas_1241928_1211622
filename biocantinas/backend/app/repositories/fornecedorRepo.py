@@ -13,6 +13,7 @@ class FornecedorRepo:
 			nome=model.nome,
 			data_inscricao=model.data_inscricao,
 			aprovado=model.aprovado,
+			usuario_id=model.usuario_id,
 		)
 		orm.produtos = [
 			ProdutoFornecedorORM(
@@ -46,6 +47,7 @@ class FornecedorRepo:
 		orm.nome = f.nome
 		orm.data_inscricao = f.data_inscricao
 		orm.aprovado = f.aprovado
+		orm.usuario_id = f.usuario_id
 		self.session.commit()
 
 	def _to_model(self, orm: FornecedorORM) -> FornecedorModel:
@@ -66,4 +68,5 @@ class FornecedorRepo:
 			data_inscricao=orm.data_inscricao,
 			produtos=produtos,
 			aprovado=orm.aprovado,
+			usuario_id=orm.usuario_id,
 		)

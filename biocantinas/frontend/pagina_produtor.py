@@ -227,8 +227,35 @@ def pagina_produtor(API_URL, auth_token):
     with tab3:
         st.subheader("📝 Registro de Produtor")
         
-        nome = st.text_input("Nome do produtor")
-        data_inscricao = st.date_input("Data de inscrição", value=date.today())
+        # Obter dados do perfil (sempre existirá para produtores)
+        try:
+            perfil_response = requests.get(
+                f"{API_URL}/fornecedores/meu-perfil",
+                headers=headers
+            )
+            
+            if perfil_response.status_code == 200:
+                perfil = perfil_response.json()
+                nome = perfil.get("nome", "N/A")
+                data_inscricao_str = perfil.get("data_inscricao", "N/A")
+                
+                # Mostrar dados não editáveis
+                st.metric("Nome do Produtor", nome)
+                st.metric("Data de Inscrição", data_inscricao_str)
+                
+                # Converter string para objeto date
+                try:
+                    data_inscricao = date.fromisoformat(data_inscricao_str)
+                except:
+                    data_inscricao = date.today()
+            else:
+                st.error("❌ Erro ao carregar perfil do produtor.")
+                nome = "Erro"
+                data_inscricao = date.today()
+        except Exception as e:
+            st.error(f"❌ Erro ao conectar com API: {str(e)}")
+            nome = "Erro"
+            data_inscricao = date.today()
 
         st.subheader("Produtos")
 

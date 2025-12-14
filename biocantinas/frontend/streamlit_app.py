@@ -183,34 +183,14 @@ if not st.session_state.auth_token:
         reg_password = st.text_input("Senha (registro)", type="password", key="reg_password")
         reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR", "GESTOR_CANTINA", "DIETISTA"], key="reg_role")
         
-        # Inicializar estado para formulário de produtor
-        if "show_produtor_form" not in st.session_state:
-            st.session_state.show_produtor_form = False
-        if "produtor_registered" not in st.session_state:
-            st.session_state.produtor_registered = False
-        
-        if st.button("Criar conta"):
-            if reg_username and reg_password:
-                # Se for PRODUTOR, mostrar formulário adicional
-                if reg_role == "PRODUTOR":
-                    if register(reg_username, reg_password, reg_role, keep_form_open=True):
-                        st.session_state.show_produtor_form = True
-                        st.session_state.temp_username = reg_username
-                        st.session_state.temp_password = reg_password
-                        st.rerun()
-                else:
-                    # Para outros papéis, registrar normalmente
-                    register(reg_username, reg_password, reg_role)
-            else:
-                st.error("Preencha todos os campos!")
-        
-        # Formulário adicional para PRODUTOR
-        if st.session_state.show_produtor_form and not st.session_state.produtor_registered:
+        # Mostrar formulário adicional para PRODUTOR assim que for selecionado
+        if reg_role == "PRODUTOR":
             st.divider()
             st.subheader("📝 Dados do Produtor")
             st.info("Complete os dados do seu perfil de produtor")
             
             produtor_nome = st.text_input("Nome do Produtor/Empresa", key="produtor_nome")
+            st.caption(f"📅 Data de Inscrição: {date.today().strftime('%Y-%m-%d')}")
             
             # Lista fixa de produtos com seus tipos
             PRODUTOS_DISPONIVEIS = {
@@ -319,55 +299,63 @@ if not st.session_state.auth_token:
                             "intervalo_producao_fim": str(data_fim)
                         })
             
-            if st.button("Finalizar Cadastro de Produtor"):
-                if produtor_nome and len(produtos_list) > 0:
+            # Botão de criar conta para PRODUTOR (com validação completa)
+            if st.button("Criar conta"):
+                if reg_username and reg_password and produtor_nome and len(produtos_list) > 0:
                     try:
-                        # Fazer login automático para obter token
-                        login_response = requests.post(
-                            f"{API_URL}/auth/login",
-                            json={
-                                "username": st.session_state.temp_username,
-                                "password": st.session_state.temp_password
-                            }
+                        # 1. Criar usuário
+                        user_response = requests.post(
+                            f"{API_URL}/auth/signup",
+                            json={"username": reg_username, "password": reg_password, "role": "PRODUTOR"}
                         )
                         
-                        if login_response.status_code == 200:
-                            token = login_response.json()["access_token"]
-                            headers = {"Authorization": f"Bearer {token}"}
-                            
-                            # Criar fornecedor
-                            fornecedor_payload = {
-                                "nome": produtor_nome,
-                                "data_inscricao": str(date.today()),
-                                "produtos": produtos_list
-                            }
-                            
-                            fornecedor_response = requests.post(
-                                f"{API_URL}/fornecedores",
-                                json=fornecedor_payload,
-                                headers=headers
+                        if user_response.status_code in [200, 201]:
+                            # 2. Fazer login para obter token
+                            login_response = requests.post(
+                                f"{API_URL}/auth/login",
+                                json={"username": reg_username, "password": reg_password}
                             )
                             
-                            if fornecedor_response.status_code in [200, 201]:
-                                st.success("✅ Cadastro de produtor finalizado com sucesso!")
-                                st.info("Aguarde a aprovação do gestor para começar a fornecer produtos.")
-                                st.session_state.produtor_registered = True
-                                st.session_state.show_produtor_form = False
-                                st.session_state.show_register = False
-                                # Limpar dados temporários
-                                if "temp_username" in st.session_state:
-                                    del st.session_state.temp_username
-                                if "temp_password" in st.session_state:
-                                    del st.session_state.temp_password
-                                st.rerun()
+                            if login_response.status_code == 200:
+                                token = login_response.json()["access_token"]
+                                headers = {"Authorization": f"Bearer {token}"}
+                                
+                                # 3. Criar fornecedor (usando nome customizado)
+                                fornecedor_payload = {
+                                    "nome": produtor_nome,
+                                    "data_inscricao": str(date.today()),
+                                    "produtos": produtos_list
+                                }
+                                
+                                fornecedor_response = requests.post(
+                                    f"{API_URL}/fornecedores",
+                                    json=fornecedor_payload,
+                                    headers=headers
+                                )
+                                
+                                if fornecedor_response.status_code in [200, 201]:
+                                    st.success("✅ Cadastro de produtor realizado com sucesso!")
+                                    st.info("Aguarde a aprovação do gestor. Faça login para acessar sua área.")
+                                    st.session_state.show_register = False
+                                    st.rerun()
+                                else:
+                                    st.error(f"Erro ao cadastrar fornecedor: {fornecedor_response.json().get('detail', 'Erro desconhecido')}")
                             else:
-                                st.error(f"Erro ao cadastrar fornecedor: {fornecedor_response.json().get('detail', 'Erro desconhecido')}")
+                                st.error("Erro ao fazer login automático")
                         else:
-                            st.error("Erro ao fazer login automático")
+                            st.error(f"Erro no registro: {user_response.json().get('detail', 'Erro desconhecido')}")
                     except Exception as e:
                         st.error(f"Erro ao finalizar cadastro: {str(e)}")
                 else:
-                    st.error("Preencha o nome do produtor e cadastre pelo menos um produto!")
+                    st.error("Preencha todos os campos: usuário, senha, nome do produtor e pelo menos um produto!")
+        
+        else:
+            # Para outros papéis (não PRODUTOR), botão simples
+            if st.button("Criar conta"):
+                if reg_username and reg_password:
+                    register(reg_username, reg_password, reg_role)
+                else:
+                    st.error("Preencha todos os campos!")
     else:
         st.subheader("Fazer login")
         username = st.text_input("Usuário", key="username")

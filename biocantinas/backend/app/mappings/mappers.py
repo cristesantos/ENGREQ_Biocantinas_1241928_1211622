@@ -25,6 +25,7 @@ def dto_to_model_create(dto: FornecedorCreateDTO, new_id: int) -> FornecedorMode
         data_inscricao=dto.data_inscricao,
         produtos=produtos,
         aprovado=False,
+        usuario_id=None,  # Será definido no serviço
     )
 
 

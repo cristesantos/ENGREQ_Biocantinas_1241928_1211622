@@ -34,9 +34,10 @@ class Services:
         self.repo: Repository = repo or SqlRepository()
 
     # CRUD + business
-    def criar_fornecedor(self, data: FornecedorCreateDTO) -> FornecedorDTO:
+    def criar_fornecedor(self, data: FornecedorCreateDTO, usuario_id: int) -> FornecedorDTO:
         # ID é atribuído pelo autoincrement da BD
         model = dto_to_model_create(data, new_id=0)
+        model.usuario_id = usuario_id  # Vincular ao usuário
         stored = self.repo.criar_fornecedor(model)
         return model_to_dto(stored)
 
@@ -52,6 +53,14 @@ class Services:
         fornecedores = self.repo.listar_fornecedores()
         for f in fornecedores:
             if f.nome.lower() == nome.lower():
+                return model_to_dto(f)
+        return None
+    
+    def obter_fornecedor_por_usuario_id(self, usuario_id: int) -> FornecedorDTO | None:
+        """Obtém fornecedor pelo ID do usuário"""
+        fornecedores = self.repo.listar_fornecedores()
+        for f in fornecedores:
+            if f.usuario_id == usuario_id:
                 return model_to_dto(f)
         return None
 
