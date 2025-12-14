@@ -255,7 +255,8 @@ def pagina_gestor(API_URL, auth_token):
                                 dias_nome = {1: "Segunda-feira", 2: "Terça-feira", 3: "Quarta-feira", 4: "Quinta-feira", 5: "Sexta-feira"}
                                 
                                 for dia in kpi_data['dias']:
-                                    with st.expander(f"{dias_nome.get(dia['dia_semana'], f'Dia {dia["dia_semana"]}')} - Média: {dia['media_percentagem_biologica']:.1f}%"):
+                                    dia_nome = dias_nome.get(dia['dia_semana'], f"Dia {dia['dia_semana']}")
+                                    with st.expander(f"{dia_nome} - Média: {dia['media_percentagem_biologica']:.1f}%"):
                                         col_a, col_b = st.columns(2)
                                         
                                         with col_a:

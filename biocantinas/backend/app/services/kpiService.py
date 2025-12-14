@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from biocantinas.backend.app.db.models import (
+from app.db.models import (
     RefeicaoORM, ItemRefeicaoORM, EmentaORM, ProdutoFornecedorORM, ExecucaoRefeicaoORM
 )
-from biocantinas.backend.app.dtos.kpiDTO import (
+from app.dtos.kpiDTO import (
     RefeicaoKPIDTO, IngredienteKPIDTO, DiaKPIDTO, EmentaKPIDTO,
     DesperdícioRefeicaoDTO, DesperdícioDiaDTO, DesperdícioEmentaDTO, KPIConsolidadoDTO
 )

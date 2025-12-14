@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from biocantinas.backend.app.db.session import get_db
-from biocantinas.backend.app.services.kpiService import KPIService
-from biocantinas.backend.app.dtos.kpiDTO import (
+from app.db.session import get_db
+from app.services.kpiService import KPIService
+from app.dtos.kpiDTO import (
     RefeicaoKPIDTO, DiaKPIDTO, EmentaKPIDTO,
     DesperdícioRefeicaoDTO, DesperdícioDiaDTO, DesperdícioEmentaDTO, KPIConsolidadoDTO
 )
