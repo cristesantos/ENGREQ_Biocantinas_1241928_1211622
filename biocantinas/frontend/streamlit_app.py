@@ -435,15 +435,37 @@ if not st.session_state.auth_token:
 #  6. Sidebar e navegação (usuário autenticado)
 # ============================================================
 
-st.sidebar.title("BioCantinas")
-if st.session_state.user_info:
-    st.sidebar.write(f"👤 Logado como: **{st.session_state.user_info['username']}** ({st.session_state.user_info['role']})")
-else:
-    st.sidebar.write("👤 Não autenticado")
+# Adicionar logo no sidebar
+logo_path = Path(__file__).parent / "Biocantinas.png"
+if logo_path.exists():
+    st.sidebar.image(str(logo_path), use_container_width=True)
 
-if st.sidebar.button("Logout"):
+st.sidebar.divider()
+
+# Criar container para botão logout com fundo vermelho
+col = st.sidebar.container()
+if col.button("🚪 Logout", use_container_width=True, key="logout_btn", type="primary"):
     logout()
     st.rerun()
+
+# CSS específico para o botão de logout
+st.markdown("""
+    <style>
+    /* Estilizar apenas o botão de logout */
+    button[kind="primary"] {
+        background-color: #dc3545 !important;
+        border-color: #dc3545 !important;
+    }
+    button[kind="primary"]:hover {
+        background-color: #c82333 !important;
+        border-color: #bd2130 !important;
+    }
+    button[kind="primary"]:active {
+        background-color: #bd2130 !important;
+        border-color: #b21f2d !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # Filtrar páginas por papel do usuário
 user_role = str((st.session_state.user_info or {}).get("role", "OUTRO")).upper()
@@ -471,10 +493,6 @@ pagina = st.sidebar.radio("Perfil", paginas_disponiveis) if len(paginas_disponiv
 
 if pagina == "Página inicial":
     st.header("Bem-vindo ao BioCantinas!")
-    if st.session_state.user_info:
-        st.write(f"Você está logado como **{st.session_state.user_info['username']}** com o papel **{st.session_state.user_info['role']}**")
-    else:
-        st.write("Você ainda não está autenticado.")
 
 
 # ============================================================
