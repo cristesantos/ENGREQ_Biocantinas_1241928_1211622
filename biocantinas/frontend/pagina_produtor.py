@@ -10,21 +10,32 @@ def create_fornecedor(API_URL, auth_token, payload):
     return r.json()
 
 def pagina_produtor(API_URL, auth_token):
-    st.header("Área do Produtor")
-    
     headers = {"Authorization": f"Bearer {auth_token}"}
+    
+    # Obter informações do fornecedor para o título
+    try:
+        perfil_response = requests.get(
+            f"{API_URL}/fornecedores/meu-perfil",
+            headers=headers
+        )
+        if perfil_response.status_code == 200:
+            perfil = perfil_response.json()
+            nome_fornecedor = perfil.get("nome", "Produtor")
+            st.header(f"Bem vindo, {nome_fornecedor}")
+        else:
+            st.header("Área do Produtor")
+    except:
+        st.header("Área do Produtor")
     
     # Criar abas
     tab1, tab2, tab3 = st.tabs([
         "📋 Minhas Informações",
-        "🔍 Previsão de Necessidades",
+        "🔍 Previsão de Fornecimento",
         "📝 Registro de Produtos"
     ])
     
     # ============ TAB 1: MINHAS INFORMAÇÕES ============
     with tab1:
-        st.subheader("📋 Informações do Produtor")
-        
         try:
             perfil_response = requests.get(
                 f"{API_URL}/fornecedores/meu-perfil",
@@ -34,34 +45,54 @@ def pagina_produtor(API_URL, auth_token):
             if perfil_response.status_code == 200:
                 perfil = perfil_response.json()
                 
-                # Informações básicas
-                st.markdown("### 🏢 Dados do Fornecedor")
-                col1, col2 = st.columns(2)
+                # Mostrar nome, status e data de inscrição
+                col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Nome", perfil.get("nome", "N/A"))
-                    st.metric("Status", "✅ Aprovado" if perfil.get("aprovado") else "⏳ Aguardando Aprovação")
+                    st.metric("Nome Registado", perfil.get("nome", "N/A"))
                 with col2:
+                    st.metric("Status", "✅ Aprovado" if perfil.get("aprovado") else "⏳ Pendente")
+                with col3:
                     data_inscricao = perfil.get("data_inscricao", "N/A")
                     st.metric("Data de Inscrição", data_inscricao)
-                    st.metric("ID do Fornecedor", perfil.get("id", "N/A"))
                 
                 st.divider()
                 
-                # Produtos cadastrados
-                st.markdown("### 🌱 Produtos Cadastrados")
                 produtos = perfil.get("produtos", [])
                 
                 if produtos:
-                    # Obter ordem de prioridade
-                    try:
-                        ordem_response = requests.get(
-                            f"{API_URL}/fornecedores/ordem",
-                            headers=headers
-                        )
-                        ordem_data = ordem_response.json() if ordem_response.status_code == 200 else []
-                    except:
-                        ordem_data = []
+                    # Resumo estatístico primeiro
+                    st.markdown("### 📊 Resumo")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total de Produtos", len(produtos))
+                    with col2:
+                        capacidade_total = sum(p.get("capacidade", 0) for p in produtos)
+                        st.metric("Capacidade Total", f"{capacidade_total} kg")
+                    with col3:
+                        # Calcular produtos com prioridade 1
+                        try:
+                            ordem_response = requests.get(
+                                f"{API_URL}/fornecedores/ordem",
+                                headers=headers
+                            )
+                            ordem_data = ordem_response.json() if ordem_response.status_code == 200 else []
+                        except:
+                            ordem_data = []
+                        
+                        produtos_prioridade_1 = 0
+                        for produto in produtos:
+                            for ordem_item in ordem_data:
+                                if ordem_item["produto"].lower() == produto["nome"].lower():
+                                    fornecedores_ids = ordem_item.get("fornecedores_ids", [])
+                                    if perfil["id"] in fornecedores_ids and fornecedores_ids.index(perfil["id"]) == 0:
+                                        produtos_prioridade_1 += 1
+                                    break
+                        st.metric("Produtos com Prioridade 1", produtos_prioridade_1)
                     
+                    st.divider()
+                    
+                    # Tabela de produtos
+                    st.markdown("### 🌱 Produtos Cadastrados")
                     produtos_info = []
                     for produto in produtos:
                         # Encontrar prioridade
@@ -84,18 +115,6 @@ def pagina_produtor(API_URL, auth_token):
                     
                     df_produtos = pd.DataFrame(produtos_info)
                     st.dataframe(df_produtos, use_container_width=True, hide_index=True)
-                    
-                    # Resumo estatístico
-                    st.markdown("### 📊 Resumo")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total de Produtos", len(produtos))
-                    with col2:
-                        capacidade_total = sum(p.get("capacidade", 0) for p in produtos)
-                        st.metric("Capacidade Total", f"{capacidade_total} kg")
-                    with col3:
-                        produtos_prioridade_1 = sum(1 for p in produtos_info if p["Prioridade"] == 1)
-                        st.metric("Produtos com Prioridade 1", produtos_prioridade_1)
                 else:
                     st.info("ℹ️ Nenhum produto cadastrado ainda. Vá para a aba 'Registro de Produtos' para cadastrar.")
             else:
@@ -148,7 +167,7 @@ def pagina_produtor(API_URL, auth_token):
                                     prioridade_map[produto_nome] = fornecedores_ids.index(perfil["id"]) + 1
                                 break
                     
-                    st.subheader("🔍 Previsão de Necessidades dos Meus Produtos")
+                    st.subheader("🔍 Previsão de Fornecimento dos Meus Produtos")
                     st.write(f"Produtos cadastrados: {', '.join([p['nome'] for p in perfil.get('produtos', [])])}")
                     
                     col1, col2 = st.columns(2)

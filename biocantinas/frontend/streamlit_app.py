@@ -37,7 +37,7 @@ def _resolve_api_url():
 
 API_URL = _resolve_api_url()
 
-st.set_page_config(page_title="BioCantinas - Fornecedores")
+st.set_page_config(page_title="BioCantinas - Fornecedores", layout="wide")
 
 
 # ============================================================
@@ -203,7 +203,7 @@ if not st.session_state.auth_token:
         """, unsafe_allow_html=True)
     
     # Centralizar e reduzir o tamanho da área de login
-    col_left, col_center, col_right = st.columns([1, 2, 1])
+    col_left, col_center, col_right = st.columns([2, 1, 2])
     
     with col_center:
         # Container com fundo branco
@@ -211,12 +211,32 @@ if not st.session_state.auth_token:
             <style>
             div[data-testid="column"]:nth-child(2) {{
                 background-color: white !important;
-                padding: 2rem !important;
+                padding: 1.5rem !important;
                 border-radius: 15px !important;
                 box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+                max-width: 400px !important;
+                margin: 0 auto !important;
             }}
             div[data-testid="column"]:nth-child(2) > div {{
                 background-color: white !important;
+            }}
+            /* Reduzir tamanho dos inputs */
+            div[data-testid="column"]:nth-child(2) input {{
+                font-size: 0.9rem !important;
+                padding: 0.4rem !important;
+            }}
+            /* Reduzir tamanho dos botões */
+            div[data-testid="column"]:nth-child(2) button {{
+                font-size: 0.9rem !important;
+                padding: 0.4rem 0.8rem !important;
+            }}
+            /* Reduzir tamanho dos selectbox */
+            div[data-testid="column"]:nth-child(2) .stSelectbox {{
+                font-size: 0.9rem !important;
+            }}
+            /* Reduzir espaçamento */
+            div[data-testid="column"]:nth-child(2) .stTextInput {{
+                margin-bottom: 0.5rem !important;
             }}
             </style>
         """, unsafe_allow_html=True)
