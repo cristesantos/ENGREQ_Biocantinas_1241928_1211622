@@ -447,7 +447,7 @@ if st.sidebar.button("Logout"):
 
 # Filtrar páginas por papel do usuário
 user_role = str((st.session_state.user_info or {}).get("role", "OUTRO")).upper()
-paginas_disponiveis = ["Página inicial"]
+paginas_disponiveis = []
 
 if user_role == "GESTOR":
     paginas_disponiveis.append("Gestor")
@@ -458,7 +458,11 @@ if user_role == "GESTOR_CANTINA":
 if user_role == "DIETISTA":
     paginas_disponiveis.append("Dietista")
 
-pagina = st.sidebar.radio("Perfil", paginas_disponiveis)
+# Se não houver páginas específicas, mostrar página inicial
+if not paginas_disponiveis:
+    paginas_disponiveis.append("Página inicial")
+
+pagina = st.sidebar.radio("Perfil", paginas_disponiveis) if len(paginas_disponiveis) > 1 else paginas_disponiveis[0]
 
 
 # ============================================================
