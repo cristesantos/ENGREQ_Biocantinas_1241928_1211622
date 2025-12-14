@@ -106,6 +106,36 @@ def create_users(session):
             role="PRODUTOR",
             is_active=True
         ),
+        UserORM(
+            username="rita",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="miguel",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="sofia",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="bruno",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
+        UserORM(
+            username="carla",
+            hashed_password=pwd_context.hash("1"),
+            role="PRODUTOR",
+            is_active=True
+        ),
     ]
     
     for user in users:
@@ -198,6 +228,65 @@ def create_fornecedores(session, user_ids):
                 {"nome": "Frango", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
             ]
         },
+        # Rita - Hortícolas especiais (espinafre, beterraba, pimento)
+        {
+            "nome": "Rita Gomes Hortícolas",
+            "usuario_id": user_ids["rita"],
+            "data_inscricao": today - timedelta(days=8),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Espinafre", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 60, "biologico": True},
+                {"nome": "Beterraba", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80, "biologico": True},
+                {"nome": "Pimento", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=45), "capacidade": 50, "biologico": True},
+            ]
+        },
+        # Miguel - Peixes (salmão, pescada, bacalhau)
+        {
+            "nome": "Miguel Silva Peixaria",
+            "usuario_id": user_ids["miguel"],
+            "data_inscricao": today - timedelta(days=12),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Salmão", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 100, "biologico": False},
+                {"nome": "Pescada", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 90, "biologico": False},
+                {"nome": "Bacalhau", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 80, "biologico": False},
+            ]
+        },
+        # Sofia - Hortícolas adicionais (batata doce, curgete) e Peru
+        {
+            "nome": "Sofia Costa Quinta",
+            "usuario_id": user_ids["sofia"],
+            "data_inscricao": today - timedelta(days=18),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Batata Doce", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": True},
+                {"nome": "Curgete", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=35), "capacidade": 70, "biologico": True},
+                {"nome": "Peru", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 120, "biologico": True},
+            ]
+        },
+        # Bruno - Batata (segundo fornecedor de batata com menor prioridade)
+        {
+            "nome": "Bruno Ferreira Tubérculos",
+            "usuario_id": user_ids["bruno"],
+            "data_inscricao": today - timedelta(days=5),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Batata", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=150), "capacidade": 200, "biologico": True},
+                {"nome": "Cenoura", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": True},
+            ]
+        },
+        # Carla - Tomate e Alface (produtos repetidos para testar prioridades)
+        {
+            "nome": "Carla Mendes Horta",
+            "usuario_id": user_ids["carla"],
+            "data_inscricao": today - timedelta(days=22),
+            "aprovado": True,
+            "produtos": [
+                {"nome": "Tomate", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 80, "biologico": True},
+                {"nome": "Alface", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 50, "biologico": True},
+                {"nome": "Couve", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 60, "biologico": True},
+            ]
+        },
     ]
     
     for data in fornecedores_data:
@@ -241,6 +330,7 @@ def create_ementas(session):
     # Refeições da semana (dia_semana: 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta)
     refeicoes1 = [
         # SEGUNDA-FEIRA (dia_semana=1) - 15 Dez
+        # Opção 1 - Almoço
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=1,
@@ -252,6 +342,20 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="cenoura", quantidade_estimada=2),
             ]
         ),
+        # Opção 2 - Almoço
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=1,
+            tipo="almoço",
+            descricao="Peixe com arroz e salada",
+            itens=[
+                ItemRefeicaoORM(ingrediente="pescada", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="arroz", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=1),
+                ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=1),
+            ]
+        ),
+        # Opção 1 - Jantar
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=1,
@@ -263,7 +367,20 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="couve", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Jantar
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=1,
+            tipo="jantar",
+            descricao="Omelete com salada",
+            itens=[
+                ItemRefeicaoORM(ingrediente="ovos", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=1),
+                ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=1),
+            ]
+        ),
         # TERÇA-FEIRA (dia_semana=2) - 10 Dez
+        # Opção 1 - Almoço
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=2,
@@ -275,6 +392,19 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="beterraba", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Almoço
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=2,
+            tipo="almoço",
+            descricao="Carne de vaca com batata",
+            itens=[
+                ItemRefeicaoORM(ingrediente="carne de vaca", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="batata", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="cenoura", quantidade_estimada=1),
+            ]
+        ),
+        # Opção 1 - Jantar
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=2,
@@ -286,7 +416,20 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="frango", quantidade_estimada=2),
             ]
         ),
+        # Opção 2 - Jantar
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=2,
+            tipo="jantar",
+            descricao="Sopa de peixe",
+            itens=[
+                ItemRefeicaoORM(ingrediente="pescada", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="batata", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="cenoura", quantidade_estimada=1),
+            ]
+        ),
         # QUARTA-FEIRA (dia_semana=3) - 11 Dez
+        # Opção 1 - Almoço
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=3,
@@ -299,6 +442,19 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="curgete", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Almoço
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=3,
+            tipo="almoço",
+            descricao="Salmão grelhado com legumes",
+            itens=[
+                ItemRefeicaoORM(ingrediente="salmão", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="beterraba", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="couve", quantidade_estimada=1),
+            ]
+        ),
+        # Opção 1 - Jantar
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=3,
@@ -309,7 +465,20 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="cenoura", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Jantar
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=3,
+            tipo="jantar",
+            descricao="Massa com molho de tomate",
+            itens=[
+                ItemRefeicaoORM(ingrediente="massa", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="queijo", quantidade_estimada=1),
+            ]
+        ),
         # QUINTA-FEIRA (dia_semana=4) - 12 Dez
+        # Opção 1 - Almoço
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=4,
@@ -321,6 +490,19 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="cenoura", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Almoço
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=4,
+            tipo="almoço",
+            descricao="Peru assado com batata doce",
+            itens=[
+                ItemRefeicaoORM(ingrediente="peru", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="batata doce", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="couve", quantidade_estimada=1),
+            ]
+        ),
+        # Opção 1 - Jantar
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=4,
@@ -332,7 +514,20 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="pimento", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Jantar
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=4,
+            tipo="jantar",
+            descricao="Bacalhau com natas",
+            itens=[
+                ItemRefeicaoORM(ingrediente="bacalhau", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="batata", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="queijo", quantidade_estimada=1),
+            ]
+        ),
         # SEXTA-FEIRA (dia_semana=5) - 13 Dez
+        # Opção 1 - Almoço
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=5,
@@ -344,6 +539,19 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="couve", quantidade_estimada=1),
             ]
         ),
+        # Opção 2 - Almoço
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=5,
+            tipo="almoço",
+            descricao="Arroz de frango",
+            itens=[
+                ItemRefeicaoORM(ingrediente="frango", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="arroz", quantidade_estimada=2),
+                ItemRefeicaoORM(ingrediente="cenoura", quantidade_estimada=1),
+            ]
+        ),
+        # Opção 1 - Jantar
         RefeicaoORM(
             ementa_id=ementa1.id,
             dia_semana=5,
@@ -353,6 +561,18 @@ def create_ementas(session):
                 ItemRefeicaoORM(ingrediente="frango", quantidade_estimada=2),
                 ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=1),
                 ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=1),
+            ]
+        ),
+        # Opção 2 - Jantar
+        RefeicaoORM(
+            ementa_id=ementa1.id,
+            dia_semana=5,
+            tipo="jantar",
+            descricao="Salada de atum",
+            itens=[
+                ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=1),
+                ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=1),
+                ItemRefeicaoORM(ingrediente="ovos", quantidade_estimada=1),
             ]
         ),
     ]
@@ -422,7 +642,7 @@ def create_ementas(session):
     print(f"✅ 2 ementas criadas com {len(refeicoes1) + len(refeicoes2)} refeições")
 
 def create_reservas(session):
-    """Criar reservas de alunos"""
+    """Criar reservas de alunos para TODAS as refeições"""
     print("\n📝 Criando reservas...")
     
     aluno1 = session.query(UserORM).filter_by(username="aluno1").first()
@@ -430,113 +650,51 @@ def create_reservas(session):
     
     refeicoes = session.query(RefeicaoORM).all()
     
-    if not aluno1 or not aluno2 or len(refeicoes) < 5:
-        print("⚠️  Dados insuficientes para criar reservas")
+    if not aluno1 or not aluno2:
+        print("⚠️  Alunos não encontrados")
         return
     
-    # Mapear refeições por dia_semana e tipo
-    refeicoes_map = {}
-    for ref in refeicoes:
-        key = (ref.dia_semana, ref.tipo, ref.descricao)
-        refeicoes_map[key] = ref
+    if len(refeicoes) == 0:
+        print("⚠️  Nenhuma refeição encontrada")
+        return
     
     reservas = []
     
-    # Criar reservas simulando números similares ao histórico
-    # Segunda - Almoço: Frango grelhado (90 reservas no histórico)
-    ref = refeicoes_map.get((1, "almoço", "Frango grelhado com batata e legumes"))
-    if ref:
-        for i in range(100):  # Criar 88 reservas (simulando ~90)
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
+    # Criar reservas para TODAS as refeições
+    # Quantidade varia baseado no histórico simulado
+    quantidades_por_tipo = {
+        (1, "almoço", "Frango grelhado com batata e legumes"): 100,
+        (1, "almoço", "Peixe assado com arroz"): 50,
+        (1, "jantar", "Sopa de legumes e sanduíche"): 70,
+        (1, "jantar", "Omelete com salada"): 40,
+        
+        (2, "almoço", "Peixe assado com arroz"): 92,
+        (2, "almoço", "Carne de vaca estufada com batatas"): 48,
+        (2, "jantar", "Salada completa com frango"): 50,
+        (2, "jantar", "Sopa de peixe e pão"): 35,
+        
+        (3, "almoço", "Lasanha vegetariana"): 98,
+        (3, "almoço", "Salmão grelhado com legumes"): 55,
+        (3, "jantar", "Creme de abóbora com pão"): 76,
+        (3, "jantar", "Massa com molho de tomate"): 45,
+        
+        (4, "almoço", "Carne de vaca estufada com batatas"): 90,
+        (4, "almoço", "Peru assado com arroz"): 52,
+        (4, "jantar", "Pizza vegetariana"): 68,
+        (4, "jantar", "Bacalhau com natas"): 38,
+        
+        (5, "almoço", "Salmão grelhado com legumes"): 83,
+        (5, "almoço", "Arroz de frango"): 47,
+        (5, "jantar", "Wrap de frango com salada"): 58,
+        (5, "jantar", "Salada de atum"): 33,
+    }
     
-    # Segunda - Jantar: Sopa de legumes (72 reservas no histórico)
-    ref = refeicoes_map.get((1, "jantar", "Sopa de legumes e sanduíche"))
-    if ref:
-        for i in range(70):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Terça - Almoço: Peixe assado (95 reservas no histórico)
-    ref = refeicoes_map.get((2, "almoço", "Peixe assado com arroz"))
-    if ref:
-        for i in range(92):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Terça - Jantar: Salada com frango (66 reservas no histórico)
-    ref = refeicoes_map.get((2, "jantar", "Salada completa com frango"))
-    if ref:
-        for i in range(50):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Quarta - Almoço: Lasanha vegetariana (100 reservas no histórico)
-    ref = refeicoes_map.get((3, "almoço", "Lasanha vegetariana"))
-    if ref:
-        for i in range(98):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Quarta - Jantar: Creme de abóbora (78 reservas no histórico)
-    ref = refeicoes_map.get((3, "jantar", "Creme de abóbora com pão"))
-    if ref:
-        for i in range(76):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Quinta - Almoço: Carne de vaca (92 reservas no histórico)
-    ref = refeicoes_map.get((4, "almoço", "Carne de vaca estufada com batatas"))
-    if ref:
-        for i in range(90):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Quinta - Jantar: Pizza vegetariana (69 reservas no histórico)
-    ref = refeicoes_map.get((4, "jantar", "Pizza vegetariana"))
-    if ref:
-        for i in range(68):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Sexta - Almoço: Salmão (85 reservas no histórico)
-    ref = refeicoes_map.get((5, "almoço", "Salmão grelhado com legumes"))
-    if ref:
-        for i in range(83):
-            reservas.append(ReservaRefeicaoORM(
-                utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
-                refeicao_id=ref.id,
-                quantidade_pessoas=1
-            ))
-    
-    # Sexta - Jantar: Wrap de frango (60 reservas no histórico)
-    ref = refeicoes_map.get((5, "jantar", "Wrap de frango com salada"))
-    if ref:
-        for i in range(58):
+    # Criar reservas para cada refeição
+    for ref in refeicoes:
+        key = (ref.dia_semana, ref.tipo, ref.descricao)
+        quantidade = quantidades_por_tipo.get(key, 60)  # Default 60 se não especificado
+        
+        for i in range(quantidade):
             reservas.append(ReservaRefeicaoORM(
                 utilizador_id=aluno1.id if i % 2 == 0 else aluno2.id,
                 refeicao_id=ref.id,
@@ -547,7 +705,7 @@ def create_reservas(session):
         session.add(reserva)
     
     session.commit()
-    print(f"✅ {len(reservas)} reservas criadas")
+    print(f"✅ {len(reservas)} reservas criadas para {len(refeicoes)} refeições")
 
 def create_historico(session):
     """Criar dados históricos"""
