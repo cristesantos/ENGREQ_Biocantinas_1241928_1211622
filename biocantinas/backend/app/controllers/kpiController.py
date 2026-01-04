@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from app.db.session import get_db
-from app.services.kpiService import KPIService
-from app.dtos.kpiDTO import (
+from ..db.session import get_db
+from ..services.kpiService import KPIService
+from ..dtos.kpiDTO import (
     RefeicaoKPIDTO, DiaKPIDTO, EmentaKPIDTO,
-    DesperdícioRefeicaoDTO, DesperdícioDiaDTO, DesperdícioEmentaDTO, KPIConsolidadoDTO
+    DesperdicioRefeicaoDTO, DesperdicioDiaDTO, DesperdicioEmentaDTO, KPIConsolidadoDTO
 )
 from datetime import date
 
@@ -55,7 +55,7 @@ def get_kpi_ementa(ementa_id: int, db: Session = Depends(get_db)):
 
 # ==== ENDPOINTS DE DESPERDÍCIO ====
 
-@router.get("/desperdicio/refeicao/{refeicao_id}", response_model=DesperdícioRefeicaoDTO)
+@router.get("/desperdicio/refeicao/{refeicao_id}", response_model=DesperdicioRefeicaoDTO)
 def get_desperdicio_refeicao(refeicao_id: int, data_execucao: date = None, db: Session = Depends(get_db)):
     """
     Calcula taxa de desperdício de uma refeição específica.
@@ -69,7 +69,7 @@ def get_desperdicio_refeicao(refeicao_id: int, data_execucao: date = None, db: S
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao calcular desperdício: {str(e)}")
 
-@router.get("/desperdicio/dia/{ementa_id}/{dia_semana}", response_model=DesperdícioDiaDTO)
+@router.get("/desperdicio/dia/{ementa_id}/{dia_semana}", response_model=DesperdicioDiaDTO)
 def get_desperdicio_dia(ementa_id: int, dia_semana: int, db: Session = Depends(get_db)):
     """
     Calcula desperdício agregado de um dia (almoço + jantar)
@@ -84,7 +84,7 @@ def get_desperdicio_dia(ementa_id: int, dia_semana: int, db: Session = Depends(g
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao calcular desperdício: {str(e)}")
 
-@router.get("/desperdicio/ementa/{ementa_id}", response_model=DesperdícioEmentaDTO)
+@router.get("/desperdicio/ementa/{ementa_id}", response_model=DesperdicioEmentaDTO)
 def get_desperdicio_ementa(ementa_id: int, db: Session = Depends(get_db)):
     """
     Calcula desperdício agregado de uma ementa completa

@@ -29,7 +29,7 @@ class EmentaKPIDTO(BaseModel):
 
 # ==== KPIs DE DESPERDÍCIO ====
 
-class DesperdícioRefeicaoDTO(BaseModel):
+class DesperdicioRefeicaoDTO(BaseModel):
     refeicao_id: int
     refeicao_descricao: str
     data_execucao: str
@@ -39,7 +39,7 @@ class DesperdícioRefeicaoDTO(BaseModel):
     taxa_desperdicio: float  # % de nao_servida / produzida
     taxa_servida: float  # % de servida / produzida
 
-class DesperdícioDiaDTO(BaseModel):
+class DesperdicioDiaDTO(BaseModel):
     ementa_id: int
     dia_semana: int
     tipo_refeicao: str  # "almoço" ou "jantar"
@@ -49,7 +49,7 @@ class DesperdícioDiaDTO(BaseModel):
     taxa_desperdicio_media: float  # % média de desperdício
     taxa_servida_media: float  # % média servida
 
-class DesperdícioEmentaDTO(BaseModel):
+class DesperdicioEmentaDTO(BaseModel):
     ementa_id: int
     ementa_nome: str
     total_produzido: int
@@ -57,7 +57,7 @@ class DesperdícioEmentaDTO(BaseModel):
     total_nao_servido: int
     taxa_desperdicio_geral: float  # % média de desperdício na semana
     taxa_servida_geral: float  # % média servida
-    dias: List[DesperdícioDiaDTO]
+    dias: List[DesperdicioDiaDTO]
 
 # ==== KPI CONSOLIDADO (BIOLÓGICO + DESPERDÍCIO) ====
 

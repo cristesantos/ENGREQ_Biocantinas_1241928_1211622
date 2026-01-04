@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
-from app.db.models import (
+from ..db.models import (
     RefeicaoORM, ItemRefeicaoORM, EmentaORM, ProdutoFornecedorORM, ExecucaoRefeicaoORM
 )
-from app.dtos.kpiDTO import (
+from ..dtos.kpiDTO import (
     RefeicaoKPIDTO, IngredienteKPIDTO, DiaKPIDTO, EmentaKPIDTO,
-    DesperdícioRefeicaoDTO, DesperdícioDiaDTO, DesperdícioEmentaDTO, KPIConsolidadoDTO
+    DesperdicioRefeicaoDTO, DesperdicioDiaDTO, DesperdicioEmentaDTO, KPIConsolidadoDTO
 )
 from typing import List
 from statistics import mean
@@ -155,7 +155,7 @@ class KPIService:
     # ==== MÉTODOS DE DESPERDÍCIO ====
     
     @staticmethod
-    def calcular_desperdicio_refeicao(session: Session, refeicao_id: int, data_execucao: date = None) -> DesperdícioRefeicaoDTO:
+    def calcular_desperdicio_refeicao(session: Session, refeicao_id: int, data_execucao: date = None) -> DesperdicioRefeicaoDTO:
         """
         Calcula desperdício de uma refeição específica.
         Se data_execucao não for fornecida, usa a mais recente.
@@ -177,7 +177,7 @@ class KPIService:
         
         if not execucao:
             # Se não tem execução, retornar dados zerados
-            return DesperdícioRefeicaoDTO(
+            return DesperdicioRefeicaoDTO(
                 refeicao_id=refeicao_id,
                 refeicao_descricao=refeicao.descricao or "",
                 data_execucao=str(date.today()),
@@ -195,7 +195,7 @@ class KPIService:
         taxa_desp = (total_nao_serv / total_prod * 100) if total_prod > 0 else 0.0
         taxa_serv = (total_serv / total_prod * 100) if total_prod > 0 else 0.0
         
-        return DesperdícioRefeicaoDTO(
+        return DesperdicioRefeicaoDTO(
             refeicao_id=refeicao_id,
             refeicao_descricao=refeicao.descricao or "",
             data_execucao=str(execucao.data_execucao),
@@ -207,7 +207,7 @@ class KPIService:
         )
     
     @staticmethod
-    def calcular_desperdicio_dia(session: Session, ementa_id: int, dia_semana: int) -> DesperdícioDiaDTO:
+    def calcular_desperdicio_dia(session: Session, ementa_id: int, dia_semana: int) -> DesperdicioDiaDTO:
         """
         Calcula desperdício agregado de um dia (almoço + jantar)
         """
@@ -217,7 +217,7 @@ class KPIService:
         ).all()
         
         if not refeicoes:
-            return DesperdícioDiaDTO(
+            return DesperdicioDiaDTO(
                 ementa_id=ementa_id,
                 dia_semana=dia_semana,
                 tipo_refeicao="completo",
@@ -254,7 +254,7 @@ class KPIService:
         tipos = set(r.tipo for r in refeicoes)
         tipo_str = " + ".join(sorted(tipos)) if tipos else "completo"
         
-        return DesperdícioDiaDTO(
+        return DesperdicioDiaDTO(
             ementa_id=ementa_id,
             dia_semana=dia_semana,
             tipo_refeicao=tipo_str,
@@ -266,7 +266,7 @@ class KPIService:
         )
     
     @staticmethod
-    def calcular_desperdicio_ementa(session: Session, ementa_id: int) -> DesperdícioEmentaDTO:
+    def calcular_desperdicio_ementa(session: Session, ementa_id: int) -> DesperdicioEmentaDTO:
         """
         Calcula desperdício agregado de uma ementa completa
         """
@@ -295,7 +295,7 @@ class KPIService:
         taxa_desp_geral = (totais_nao_serv / totais_prod * 100) if totais_prod > 0 else 0.0
         taxa_serv_geral = (totais_serv / totais_prod * 100) if totais_prod > 0 else 0.0
         
-        return DesperdícioEmentaDTO(
+        return DesperdicioEmentaDTO(
             ementa_id=ementa_id,
             ementa_nome=ementa.nome,
             total_produzido=totais_prod,
