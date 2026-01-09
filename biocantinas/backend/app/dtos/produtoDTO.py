@@ -8,6 +8,7 @@ class ProdutoFornecedor(BaseModel):
 	intervalo_producao_inicio: date
 	intervalo_producao_fim: date
 	capacidade: int
+	certificado: str | None = None
 
 
 class ProdutoCreateDTO(BaseModel):
@@ -18,6 +19,7 @@ class ProdutoCreateDTO(BaseModel):
 	intervalo_producao_inicio: date
 	intervalo_producao_fim: date
 	capacidade: int
+	certificado: str | None = None
 
 
 class ProdutoUpdateDTO(BaseModel):
@@ -28,6 +30,7 @@ class ProdutoUpdateDTO(BaseModel):
 	intervalo_producao_inicio: date
 	intervalo_producao_fim: date
 	capacidade: int
+	certificado: str | None = None
 
 
 class ProdutoDTO(BaseModel):
@@ -40,3 +43,4 @@ class ProdutoDTO(BaseModel):
 	intervalo_producao_inicio: date
 	intervalo_producao_fim: date
 	capacidade: int
+	certificado: str | None = None

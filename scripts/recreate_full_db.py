@@ -19,6 +19,12 @@ from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+def obter_tipo_produto(nome_produto):
+    """Obtém o tipo de um produto do catálogo"""
+    if nome_produto in CATALOGO_PRODUTOS:
+        return CATALOGO_PRODUTOS[nome_produto].categoria
+    return None
+
 def delete_database(db_url: str):
     """Remove arquivos de banco de dados """
     base_dir = Path(__file__).parent.parent
@@ -304,6 +310,7 @@ def create_fornecedores(session, user_ids):
             produto = ProdutoFornecedorORM(
                 fornecedor_id=fornecedor.id,
                 nome=p['nome'],
+                tipo=obter_tipo_produto(p['nome']),
                 biologico=p['biologico'],
                 intervalo_producao_inicio=p['inicio'],
                 intervalo_producao_fim=p['fim'],

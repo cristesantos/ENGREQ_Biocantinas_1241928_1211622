@@ -23,6 +23,7 @@ class FornecedorRepo:
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
 				capacidade=p.capacidade,
+				certificado=p.certificado,
 			)
 			for p in model.produtos
 		]
@@ -59,6 +60,7 @@ class FornecedorRepo:
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
 				capacidade=p.capacidade,
+				certificado=p.certificado,
 			)
 			for p in orm.produtos
 		]

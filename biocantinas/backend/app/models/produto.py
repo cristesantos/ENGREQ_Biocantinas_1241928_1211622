@@ -9,3 +9,4 @@ class ProdutoFornecedorModel:
     intervalo_producao_inicio: date = None
     intervalo_producao_fim: date = None
     capacidade: int = 0
+    certificado: str | None = None

@@ -107,12 +107,16 @@ def pagina_produtor(API_URL, auth_token):
                         # Indicador visual para biológico/não-biológico
                         biologico_label = "🌿 Bio" if produto.get("biologico") else "🔬 Conv"
                         
+                        # Verificar se tem certificado
+                        cert_label = "✅ Sim" if produto.get("certificado") else "❌ Não"
+                        
                         produtos_info.append({
                             "Produto": produto.get("nome", ""),
                             "Tipo": biologico_label,
                             "Capacidade (kg)": produto.get("capacidade", 0),
                             "Início Produção": produto.get("intervalo_producao_inicio", "N/A"),
                             "Fim Produção": produto.get("intervalo_producao_fim", "N/A"),
+                            "Certificado": cert_label,
                             "Prioridade": prioridade if prioridade else "N/A"
                         })
                     
@@ -448,6 +452,31 @@ def pagina_produtor(API_URL, auth_token):
         prod_ini = st.date_input("Início intervalo produção", value=date.today())
         prod_fim = st.date_input("Fim intervalo produção", value=date.today())
         capacidade = st.number_input("Capacidade (Kg)", min_value=0, value=0)
+        
+        st.divider()
+        st.subheader("📜 Certificação")
+        
+        if not biologico:
+            st.warning("⚠️ Certificação é aplicável apenas para produtos biológicos. Marque 'Produto Biológico' acima.")
+        
+        certificado_texto = st.text_area(
+            "Informações de Certificação",
+            placeholder="Ex: Certificado biológico nº XYZ123, válido até 2025-12-31",
+            height=100,
+            disabled=not biologico
+        )
+        
+        arquivo_certificado = st.file_uploader(
+            "Anexar documento de certificação",
+            type=["pdf", "jpg", "jpeg", "png", "doc", "docx"],
+            disabled=not biologico
+        )
+        
+        certificado_info = None
+        if biologico and (certificado_texto or arquivo_certificado):
+            certificado_info = certificado_texto
+            if arquivo_certificado:
+                certificado_info = f"{certificado_texto}\n[Arquivo: {arquivo_certificado.name}]" if certificado_texto else f"[Arquivo: {arquivo_certificado.name}]"
 
         if st.button("Submeter inscrição"):
             if prod_nome and tipo_produto:
@@ -462,6 +491,7 @@ def pagina_produtor(API_URL, auth_token):
                             "intervalo_producao_inicio": str(prod_ini),
                             "intervalo_producao_fim": str(prod_fim),
                             "capacidade": int(capacidade),
+                            "certificado": certificado_info,
                         }
                     ],
                 }

@@ -377,6 +377,34 @@ if not st.session_state.auth_token:
                             data_inicio = st.date_input("Início da Produção", key=f"prod_inicio_{i}")
                             data_fim = st.date_input("Fim da Produção", key=f"prod_fim_{i}")
                         
+                        # Seção de certificação (apenas para produtos biológicos)
+                        st.divider()
+                        st.subheader("📜 Certificação")
+                        
+                        if not biologico:
+                            st.caption("⚠️ Certificação é aplicável apenas para produtos biológicos.")
+                        
+                        certificado_texto = st.text_area(
+                            "Informações de Certificação",
+                            placeholder="Ex: Certificado biológico nº XYZ123, válido até 2025-12-31",
+                            height=80,
+                            disabled=not biologico,
+                            key=f"prod_cert_texto_{i}"
+                        )
+                        
+                        arquivo_certificado = st.file_uploader(
+                            "Anexar documento de certificação",
+                            type=["pdf", "jpg", "jpeg", "png", "doc", "docx"],
+                            disabled=not biologico,
+                            key=f"prod_cert_arquivo_{i}"
+                        )
+                        
+                        certificado_info = None
+                        if biologico and (certificado_texto or arquivo_certificado):
+                            certificado_info = certificado_texto
+                            if arquivo_certificado:
+                                certificado_info = f"{certificado_texto}\n[Arquivo: {arquivo_certificado.name}]" if certificado_texto else f"[Arquivo: {arquivo_certificado.name}]"
+                        
                         if nome_produto and tipo_produto:
                             produtos_list.append({
                                 "nome": nome_produto,
@@ -384,7 +412,8 @@ if not st.session_state.auth_token:
                                 "biologico": biologico,
                                 "capacidade": capacidade,
                                 "intervalo_producao_inicio": str(data_inicio),
-                                "intervalo_producao_fim": str(data_fim)
+                                "intervalo_producao_fim": str(data_fim),
+                                "certificado": certificado_info
                             })
                 
                 # Botão de criar conta para PRODUTOR (com validação completa)

@@ -25,6 +25,7 @@ class ProdutoFornecedorORM(Base):
     intervalo_producao_inicio = Column(Date, nullable=False)
     intervalo_producao_fim = Column(Date, nullable=False)
     capacidade = Column(Integer, nullable=False)
+    certificado = Column(String, nullable=True)  # Informação de certificação (texto descritivo)
 
     fornecedor = relationship("FornecedorORM", back_populates="produtos")
 
