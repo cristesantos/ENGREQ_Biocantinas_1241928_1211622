@@ -97,7 +97,7 @@ def pagina_gestor_cantina(API_URL, auth_token):
                                 list(dados["necessidades_previstas_historico"].items()),
                                 columns=["Produto", "Quantidade (kg)"]
                             )
-                            st.dataframe(df_planejadas, use_container_width=True)
+                            st.dataframe(df_planejadas, width='stretch')
                         else:
                             st.info("Sem histórico")
                     
@@ -124,7 +124,7 @@ def pagina_gestor_cantina(API_URL, auth_token):
                         
                         st.dataframe(
                             df_historico, 
-                            use_container_width=True, 
+                            width='stretch', 
                             height=altura_historico,
                             column_config=column_config,
                             hide_index=True
@@ -310,7 +310,7 @@ def pagina_gestor_cantina(API_URL, auth_token):
             if alertas:
                 st.warning(f"⚠️ **{len(alertas)} alertas encontrados**")
                 df_alertas = pd.DataFrame(alertas)
-                st.dataframe(df_alertas, use_container_width=True)
+                st.dataframe(df_alertas, width='stretch')
             else:
                 st.success("✅ Nenhum alerta de desvio > 10% encontrado")
         

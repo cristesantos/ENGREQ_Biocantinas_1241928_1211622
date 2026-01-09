@@ -4,6 +4,7 @@ from ..dtos.fornecedorDTO import Fornecedor, FornecedorCreate, FornecedorUpdateA
 from ..services.fornecedorService import get_services
 from ..auth.jwt import get_current_user, require_role
 from ..dtos.userDTO import User
+from ..models.catalogo_produtos import produto_existe, CATALOGO_PRODUTOS
 
 router = APIRouter(tags=["fornecedores"])
 
@@ -29,6 +30,18 @@ def obter_meu_perfil(user: User = Depends(get_current_user)):
 @router.post("/fornecedores", response_model=Fornecedor)
 def criar_fornecedor(fornecedor: FornecedorCreate, user: User = Depends(require_role("PRODUTOR"))):
     svc = get_services()
+    
+    # ✅ Validar que produtos existem no catálogo
+    for produto in fornecedor.produtos:
+        if not produto_existe(produto.nome):
+            produtos_validos = sorted(CATALOGO_PRODUTOS.keys())
+            raise HTTPException(
+                status_code=400,
+                detail=f"Produto '{produto.nome}' não existe no catálogo. "
+                       f"Produtos válidos: {', '.join(produtos_validos[:10])}... "
+                       f"(total de {len(produtos_validos)} produtos)"
+            )
+    
     return svc.criar_fornecedor(fornecedor, user.id)
 
 @router.get("/fornecedores/{fid}", response_model=Fornecedor)

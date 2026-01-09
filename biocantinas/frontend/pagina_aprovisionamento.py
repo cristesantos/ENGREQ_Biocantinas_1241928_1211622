@@ -96,7 +96,7 @@ def mostrar_aprovisionamento():
                                 list(dados["necessidades_previstas_historico"].items()),
                                 columns=["Produto", "Quantidade (kg)"]
                             )
-                            st.dataframe(df_planejadas, use_container_width=True)
+                            st.dataframe(df_planejadas, width='stretch')
                         else:
                             st.info("Sem histórico")
                     
@@ -123,7 +123,7 @@ def mostrar_aprovisionamento():
                         
                         st.dataframe(
                             df_historico, 
-                            use_container_width=True, 
+                            width='stretch', 
                             height=altura_historico,
                             column_config=column_config,
                             hide_index=True

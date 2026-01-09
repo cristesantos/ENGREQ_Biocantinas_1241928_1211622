@@ -104,9 +104,12 @@ def pagina_produtor(API_URL, auth_token):
                                     prioridade = fornecedores_ids.index(perfil["id"]) + 1
                                 break
                         
+                        # Indicador visual para biológico/não-biológico
+                        biologico_label = "🌿 Bio" if produto.get("biologico") else "🔬 Conv"
+                        
                         produtos_info.append({
                             "Produto": produto.get("nome", ""),
-                            "Tipo": produto.get("tipo", "N/A"),
+                            "Tipo": biologico_label,
                             "Capacidade (kg)": produto.get("capacidade", 0),
                             "Início Produção": produto.get("intervalo_producao_inicio", "N/A"),
                             "Fim Produção": produto.get("intervalo_producao_fim", "N/A"),
@@ -114,7 +117,7 @@ def pagina_produtor(API_URL, auth_token):
                         })
                     
                     df_produtos = pd.DataFrame(produtos_info)
-                    st.dataframe(df_produtos, use_container_width=True, hide_index=True)
+                    st.dataframe(df_produtos, width='stretch', hide_index=True)
                     
                 else:
                     st.info("ℹ️ Nenhum produto cadastrado ainda. Vá para a aba 'Registro de Produtos' para cadastrar.")
@@ -308,7 +311,7 @@ def pagina_produtor(API_URL, auth_token):
                                     df_filtrado = pd.DataFrame(necessidades_filtradas)
                                     # Mostrar apenas as colunas: Produto, Quantidade a Fornecer e Capacidade
                                     df_display = df_filtrado[["Produto", "Quantidade a Fornecer (kg)", "Capacidade (kg)"]]
-                                    st.dataframe(df_display, use_container_width=True, hide_index=True)
+                                    st.dataframe(df_display, width='stretch', hide_index=True)
                                     
                                     # Resumo
                                     total_a_fornecer = sum(item["Quantidade a Fornecer (kg)"] for item in necessidades_filtradas)

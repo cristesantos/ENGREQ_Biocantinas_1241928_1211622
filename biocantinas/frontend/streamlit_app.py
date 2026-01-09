@@ -246,7 +246,7 @@ if not st.session_state.auth_token:
         if logo_login_path.exists():
             col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
             with col_logo2:
-                st.image(str(logo_login_path), use_container_width=True)
+                st.image(str(logo_login_path), width='stretch')
         
         st.markdown("<h2 style='text-align: center;'>Bem vindo!</h2>", unsafe_allow_html=True)
         
@@ -254,11 +254,11 @@ if not st.session_state.auth_token:
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🔑 Login", use_container_width=True, type="primary" if not st.session_state.show_register else "secondary"):
+            if st.button("🔑 Login", width='stretch', type="primary" if not st.session_state.show_register else "secondary"):
                 st.session_state.show_register = False
                 st.rerun()
         with col2:
-            if st.button("📝 Registrar", use_container_width=True, type="primary" if st.session_state.show_register else "secondary"):
+            if st.button("📝 Registrar", width='stretch', type="primary" if st.session_state.show_register else "secondary"):
                 st.session_state.show_register = True
                 st.rerun()
         
@@ -388,7 +388,7 @@ if not st.session_state.auth_token:
                             })
                 
                 # Botão de criar conta para PRODUTOR (com validação completa)
-                if st.button("Criar conta", use_container_width=True, type="primary"):
+                if st.button("Criar conta", width='stretch', type="primary"):
                     if reg_username and reg_password and produtor_nome and len(produtos_list) > 0:
                         try:
                             # 1. Criar usuário
@@ -439,7 +439,7 @@ if not st.session_state.auth_token:
             
             else:
                 # Para outros papéis (não PRODUTOR), botão simples
-                if st.button("Criar conta", use_container_width=True, type="primary"):
+                if st.button("Criar conta", width='stretch', type="primary"):
                     if reg_username and reg_password:
                         register(reg_username, reg_password, reg_role)
                     else:
@@ -449,7 +449,7 @@ if not st.session_state.auth_token:
             st.subheader("Entrar na conta")
             username = st.text_input("Usuário", key="username")
             password = st.text_input("Senha", type="password", key="password")
-            if st.button("Entrar", use_container_width=True, type="primary"):
+            if st.button("Entrar", width='stretch', type="primary"):
                 if username and password:
                     login(username, password)
                 else:
@@ -464,13 +464,13 @@ if not st.session_state.auth_token:
 # Adicionar logo no sidebar
 logo_path = Path(__file__).parent / "Biocantinas.png"
 if logo_path.exists():
-    st.sidebar.image(str(logo_path), use_container_width=True)
+    st.sidebar.image(str(logo_path), width='stretch')
 
 st.sidebar.divider()
 
 # Criar container para botão logout com fundo vermelho
 col = st.sidebar.container()
-if col.button("🚪 Logout", use_container_width=True, key="logout_btn", type="primary"):
+if col.button("🚪 Logout", width='stretch', key="logout_btn", type="primary"):
     logout()
     st.rerun()
 
