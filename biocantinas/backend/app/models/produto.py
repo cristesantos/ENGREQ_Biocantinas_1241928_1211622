@@ -6,7 +6,7 @@ class ProdutoFornecedorModel:
     nome: str
     tipo: str | None = None
     biologico: bool = True
-    intervalo_producao_inicio: date = None
-    intervalo_producao_fim: date = None
+    semana_producao_inicio: int = None
+    semana_producao_fim: int = None
     capacidade: int = 0
     certificado: str | None = None

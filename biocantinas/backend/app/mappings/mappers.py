@@ -13,8 +13,8 @@ def dto_to_model_create(dto: FornecedorCreateDTO, new_id: int) -> FornecedorMode
             nome=p.nome,
             tipo=p.tipo,
             biologico=p.biologico,
-            intervalo_producao_inicio=p.intervalo_producao_inicio,
-            intervalo_producao_fim=p.intervalo_producao_fim,
+            semana_producao_inicio=p.semana_producao_inicio,
+            semana_producao_fim=p.semana_producao_fim,
             capacidade=p.capacidade,
             certificado=p.certificado,
         )
@@ -36,8 +36,8 @@ def model_to_dto(model: FornecedorModel) -> FornecedorDTO:
             nome=p.nome,
             tipo=p.tipo,
             biologico=p.biologico,
-            intervalo_producao_inicio=p.intervalo_producao_inicio,
-            intervalo_producao_fim=p.intervalo_producao_fim,
+            semana_producao_inicio=p.semana_producao_inicio,
+            semana_producao_fim=p.semana_producao_fim,
             capacidade=p.capacidade,
             certificado=p.certificado,
         )

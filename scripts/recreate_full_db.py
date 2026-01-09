@@ -168,9 +168,9 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=30),
             "aprovado": True,
             "produtos": [
-                {"nome": "Maçã", "inicio": today, "fim": today + timedelta(days=90), "capacidade": 100, "biologico": True},
-                {"nome": "Pera", "inicio": today, "fim": today + timedelta(days=60), "capacidade": 50, "biologico": True},
-                {"nome": "Laranja", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80, "biologico": True},
+                {"nome": "Maçã", "semana_inicio": 1, "semana_fim": 52, "capacidade": 100, "biologico": True},
+                {"nome": "Pera", "semana_inicio": 15, "semana_fim": 40, "capacidade": 50, "biologico": True},
+                {"nome": "Laranja", "semana_inicio": 5, "semana_fim": 52, "capacidade": 80, "biologico": True},
             ]
         },
         # Maria - Hortícolas
@@ -180,10 +180,10 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=35),
             "aprovado": True,
             "produtos": [
-                {"nome": "Tomate", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 100, "biologico": True},
-                {"nome": "Alface", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 40, "biologico": True},
-                {"nome": "Cenoura", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80, "biologico": True},
-                {"nome": "Couve", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 50, "biologico": True},
+                {"nome": "Tomate", "semana_inicio": 10, "semana_fim": 40, "capacidade": 100, "biologico": True},
+                {"nome": "Alface", "semana_inicio": 15, "semana_fim": 45, "capacidade": 40, "biologico": True},
+                {"nome": "Cenoura", "semana_inicio": 5, "semana_fim": 52, "capacidade": 80, "biologico": True},
+                {"nome": "Couve", "semana_inicio": 10, "semana_fim": 50, "capacidade": 50, "biologico": True},
             ]
         },
         # Pedro - Proteínas
@@ -193,9 +193,9 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=25),
             "aprovado": True,
             "produtos": [
-                {"nome": "Frango", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 300, "biologico": True},
-                {"nome": "Carne de Vaca", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 250, "biologico": True},
-                {"nome": "Ovos", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 500, "biologico": True},
+                {"nome": "Frango", "semana_inicio": 1, "semana_fim": 52, "capacidade": 300, "biologico": True},
+                {"nome": "Carne de Vaca", "semana_inicio": 1, "semana_fim": 52, "capacidade": 250, "biologico": True},
+                {"nome": "Ovos", "semana_inicio": 1, "semana_fim": 52, "capacidade": 500, "biologico": True},
             ]
         },
         # Ana - Cereais e Laticínios
@@ -205,10 +205,10 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=20),
             "aprovado": True,
             "produtos": [
-                {"nome": "Arroz", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 200, "biologico": True},
-                {"nome": "Massa", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
-                {"nome": "Leite", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 300, "biologico": True},
-                {"nome": "Queijo", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 100, "biologico": True},
+                {"nome": "Arroz", "semana_inicio": 1, "semana_fim": 52, "capacidade": 200, "biologico": True},
+                {"nome": "Massa", "semana_inicio": 1, "semana_fim": 52, "capacidade": 150, "biologico": True},
+                {"nome": "Leite", "semana_inicio": 1, "semana_fim": 52, "capacidade": 300, "biologico": True},
+                {"nome": "Queijo", "semana_inicio": 1, "semana_fim": 52, "capacidade": 100, "biologico": True},
             ]
         },
         # Carlos - Mix de produtos
@@ -218,11 +218,11 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=15),
             "aprovado": True,
             "produtos": [
-                {"nome": "Batata", "inicio": today, "fim": today + timedelta(days=150), "capacidade": 150, "biologico": True},
-                {"nome": "Banana", "inicio": today, "fim": today + timedelta(days=90), "capacidade": 70, "biologico": True},
-                {"nome": "Peixe", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 120, "biologico": True},
-                {"nome": "Pão", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 200, "biologico": True},
-                {"nome": "Iogurte", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
+                {"nome": "Batata", "semana_inicio": 5, "semana_fim": 35, "capacidade": 150, "biologico": True},
+                {"nome": "Banana", "semana_inicio": 1, "semana_fim": 52, "capacidade": 70, "biologico": True},
+                {"nome": "Peixe", "semana_inicio": 1, "semana_fim": 52, "capacidade": 120, "biologico": True},
+                {"nome": "Pão", "semana_inicio": 1, "semana_fim": 52, "capacidade": 200, "biologico": True},
+                {"nome": "Iogurte", "semana_inicio": 1, "semana_fim": 52, "capacidade": 150, "biologico": True},
             ]
         },
         # Lucas - Produtor de Frango (menor prioridade - registro mais recente)
@@ -232,7 +232,7 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=10),
             "aprovado": True,
             "produtos": [
-                {"nome": "Frango", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 150, "biologico": True},
+                {"nome": "Frango", "semana_inicio": 1, "semana_fim": 52, "capacidade": 150, "biologico": True},
             ]
         },
         # Rita - Hortícolas especiais (espinafre, beterraba, pimento)
@@ -242,9 +242,9 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=8),
             "aprovado": True,
             "produtos": [
-                {"nome": "Espinafre", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 60, "biologico": True},
-                {"nome": "Beterraba", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 80, "biologico": True},
-                {"nome": "Pimento", "inicio": today, "fim": today + timedelta(days=45), "capacidade": 50, "biologico": True},
+                {"nome": "Espinafre", "semana_inicio": 20, "semana_fim": 40, "capacidade": 60, "biologico": True},
+                {"nome": "Beterraba", "semana_inicio": 15, "semana_fim": 45, "capacidade": 80, "biologico": True},
+                {"nome": "Pimento", "semana_inicio": 20, "semana_fim": 45, "capacidade": 50, "biologico": True},
             ]
         },
         # Miguel - Peixes (salmão, pescada, bacalhau)
@@ -254,9 +254,9 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=12),
             "aprovado": True,
             "produtos": [
-                {"nome": "Salmão", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 100, "biologico": False},
-                {"nome": "Pescada", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 90, "biologico": False},
-                {"nome": "Bacalhau", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 80, "biologico": False},
+                {"nome": "Salmão", "semana_inicio": 1, "semana_fim": 52, "capacidade": 100, "biologico": False},
+                {"nome": "Pescada", "semana_inicio": 1, "semana_fim": 52, "capacidade": 90, "biologico": False},
+                {"nome": "Bacalhau", "semana_inicio": 1, "semana_fim": 52, "capacidade": 80, "biologico": False},
             ]
         },
         # Sofia - Hortícolas adicionais (batata doce, curgete) e Peru
@@ -266,9 +266,9 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=18),
             "aprovado": True,
             "produtos": [
-                {"nome": "Batata Doce", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": True},
-                {"nome": "Curgete", "inicio": today, "fim": today + timedelta(days=35), "capacidade": 70, "biologico": True},
-                {"nome": "Peru", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 120, "biologico": True},
+                {"nome": "Batata Doce", "semana_inicio": 5, "semana_fim": 35, "capacidade": 100, "biologico": True},
+                {"nome": "Curgete", "semana_inicio": 15, "semana_fim": 40, "capacidade": 70, "biologico": True},
+                {"nome": "Peru", "semana_inicio": 1, "semana_fim": 52, "capacidade": 120, "biologico": True},
             ]
         },
         # Bruno - Batata (segundo fornecedor de batata com menor prioridade)
@@ -278,8 +278,8 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=5),
             "aprovado": True,
             "produtos": [
-                {"nome": "Batata", "inicio": today, "fim": today + timedelta(days=150), "capacidade": 200, "biologico": True},
-                {"nome": "Cenoura", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": True},
+                {"nome": "Batata", "semana_inicio": 5, "semana_fim": 35, "capacidade": 200, "biologico": True},
+                {"nome": "Cenoura", "semana_inicio": 5, "semana_fim": 52, "capacidade": 100, "biologico": True},
             ]
         },
         # Carla - Tomate e Alface (produtos repetidos para testar prioridades)
@@ -289,9 +289,9 @@ def create_fornecedores(session, user_ids):
             "data_inscricao": today - timedelta(days=22),
             "aprovado": True,
             "produtos": [
-                {"nome": "Tomate", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 80, "biologico": True},
-                {"nome": "Alface", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 50, "biologico": True},
-                {"nome": "Couve", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 60, "biologico": True},
+                {"nome": "Tomate", "semana_inicio": 10, "semana_fim": 40, "capacidade": 80, "biologico": True},
+                {"nome": "Alface", "semana_inicio": 15, "semana_fim": 45, "capacidade": 50, "biologico": True},
+                {"nome": "Couve", "semana_inicio": 10, "semana_fim": 50, "capacidade": 60, "biologico": True},
             ]
         },
     ]
@@ -312,8 +312,8 @@ def create_fornecedores(session, user_ids):
                 nome=p['nome'],
                 tipo=obter_tipo_produto(p['nome']),
                 biologico=p['biologico'],
-                intervalo_producao_inicio=p['inicio'],
-                intervalo_producao_fim=p['fim'],
+                semana_producao_inicio=p['semana_inicio'],
+                semana_producao_fim=p['semana_fim'],
                 capacidade=p['capacidade']
             )
             session.add(produto)

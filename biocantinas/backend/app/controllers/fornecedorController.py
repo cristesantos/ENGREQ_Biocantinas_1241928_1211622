@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from ..dtos.fornecedorDTO import Fornecedor, FornecedorCreate, FornecedorUpdateAprovacao, OrdemFornecedor
+from ..dtos.fornecedorDTO import Fornecedor, FornecedorCreate, FornecedorUpdateAprovacao, OrdemFornecedor, ProdutoFornecedorAdd
 from ..services.fornecedorService import get_services
 from ..auth.jwt import get_current_user, require_role
 from ..dtos.userDTO import User
@@ -26,6 +26,26 @@ def obter_meu_perfil(user: User = Depends(get_current_user)):
     if not fornecedor:
         raise HTTPException(status_code=404, detail="Perfil de fornecedor não encontrado")
     return fornecedor
+
+@router.post("/fornecedores/meu-perfil/produtos", response_model=Fornecedor)
+def adicionar_produto_meu_perfil(produto: ProdutoFornecedorAdd, user: User = Depends(require_role("PRODUTOR"))):
+    """Adiciona um novo produto ao perfil de fornecedor do usuário logado"""
+    svc = get_services()
+    
+    # ✅ Validar que o produto existe no catálogo
+    if not produto_existe(produto.nome):
+        produtos_validos = sorted(CATALOGO_PRODUTOS.keys())
+        raise HTTPException(
+            status_code=400,
+            detail=f"Produto '{produto.nome}' não existe no catálogo. "
+                   f"Produtos válidos: {', '.join(produtos_validos[:10])}... "
+                   f"(total de {len(produtos_validos)} produtos)"
+        )
+    
+    try:
+        return svc.adicionar_produto_fornecedor(user.id, produto)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 @router.post("/fornecedores", response_model=Fornecedor)
 def criar_fornecedor(fornecedor: FornecedorCreate, user: User = Depends(require_role("PRODUTOR"))):

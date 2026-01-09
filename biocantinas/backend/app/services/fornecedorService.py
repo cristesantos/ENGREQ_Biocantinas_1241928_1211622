@@ -1,9 +1,11 @@
 from typing import List, Dict, Protocol
-from ..dtos.fornecedorDTO import Fornecedor as FornecedorDTO, OrdemFornecedor, FornecedorCreate as FornecedorCreateDTO
+from ..dtos.fornecedorDTO import Fornecedor as FornecedorDTO, OrdemFornecedor, FornecedorCreate as FornecedorCreateDTO, ProdutoFornecedorAdd
 from ..models.fornecedor import FornecedorModel
+from ..models.produto import ProdutoFornecedorModel
 from ..mappings.mappers import dto_to_model_create, model_to_dto
 from ..db.session import SessionLocal, init_db
 from ..repositories.fornecedorRepo import FornecedorRepo
+from ..models.catalogo_produtos import obter_info_produto
 
 class Repository(Protocol):
     def criar_fornecedor(self, model: FornecedorModel) -> FornecedorModel: ...
@@ -63,6 +65,40 @@ class Services:
             if f.usuario_id == usuario_id:
                 return model_to_dto(f)
         return None
+    
+    def adicionar_produto_fornecedor(self, usuario_id: int, produto_data: ProdutoFornecedorAdd) -> FornecedorDTO:
+        """Adiciona um novo produto a um fornecedor existente"""
+        fornecedor = None
+        for f in self.repo.listar_fornecedores():
+            if f.usuario_id == usuario_id:
+                fornecedor = f
+                break
+        
+        if not fornecedor:
+            raise ValueError("Fornecedor não encontrado")
+        
+        # Obter o tipo do produto do catálogo
+        produto_info = obter_info_produto(produto_data.nome)
+        tipo_produto = produto_info.categoria if produto_info else "Outro"
+        
+        # Criar novo produto
+        novo_produto = ProdutoFornecedorModel(
+            nome=produto_data.nome,
+            tipo=tipo_produto,
+            biologico=produto_data.biologico,
+            semana_producao_inicio=produto_data.semana_producao_inicio,
+            semana_producao_fim=produto_data.semana_producao_fim,
+            capacidade=produto_data.capacidade,
+            certificado=produto_data.certificado,
+        )
+        
+        # Adicionar ao fornecedor
+        fornecedor.produtos.append(novo_produto)
+        
+        # Atualizar no banco de dados
+        self.repo.atualizar_fornecedor(fornecedor)
+        
+        return model_to_dto(fornecedor)
 
     def aprovar_fornecedor(self, fid: int, aprovado: bool) -> FornecedorDTO:
         fornecedor = self.repo.obter_fornecedor(fid)

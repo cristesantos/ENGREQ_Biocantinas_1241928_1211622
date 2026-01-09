@@ -14,8 +14,8 @@ class Role(str, Enum):
 
 class ProdutoFornecedor(BaseModel):
     nome: str
-    intervalo_producao_inicio: date
-    intervalo_producao_fim: date
+    semana_producao_inicio: int
+    semana_producao_fim: int
     capacidade: int
 
 class FornecedorCreate(BaseModel):

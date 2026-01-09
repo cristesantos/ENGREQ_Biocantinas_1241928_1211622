@@ -20,8 +20,8 @@ class FornecedorRepo:
 				nome=p.nome,
 				tipo=p.tipo,
 				biologico=p.biologico,
-				intervalo_producao_inicio=p.intervalo_producao_inicio,
-				intervalo_producao_fim=p.intervalo_producao_fim,
+				semana_producao_inicio=p.semana_producao_inicio,
+				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
 				certificado=p.certificado,
 			)
@@ -49,6 +49,21 @@ class FornecedorRepo:
 		orm.data_inscricao = f.data_inscricao
 		orm.aprovado = f.aprovado
 		orm.usuario_id = f.usuario_id
+		
+		# Atualizar produtos: remover antigos e adicionar novos
+		orm.produtos.clear()
+		orm.produtos = [
+			ProdutoFornecedorORM(
+				nome=p.nome,
+				tipo=p.tipo,
+				biologico=p.biologico,
+				semana_producao_inicio=p.semana_producao_inicio,
+				semana_producao_fim=p.semana_producao_fim,
+				capacidade=p.capacidade,
+				certificado=p.certificado,
+			)
+			for p in f.produtos
+		]
 		self.session.commit()
 
 	def _to_model(self, orm: FornecedorORM) -> FornecedorModel:
@@ -57,8 +72,8 @@ class FornecedorRepo:
 				nome=p.nome,
 				tipo=p.tipo,
 				biologico=p.biologico,
-				intervalo_producao_inicio=p.intervalo_producao_inicio,
-				intervalo_producao_fim=p.intervalo_producao_fim,
+				semana_producao_inicio=p.semana_producao_inicio,
+				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
 				certificado=p.certificado,
 			)

@@ -5,8 +5,8 @@ class ProdutoFornecedor(BaseModel):
 	nome: str
 	tipo: str | None = None
 	biologico: bool = True
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
 	certificado: str | None = None
 
@@ -16,8 +16,8 @@ class ProdutoCreateDTO(BaseModel):
 	nome: str
 	tipo: str | None = None
 	biologico: bool = True
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
 	certificado: str | None = None
 
@@ -27,8 +27,8 @@ class ProdutoUpdateDTO(BaseModel):
 	nome: str
 	tipo: str | None = None
 	biologico: bool = True
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
 	certificado: str | None = None
 
@@ -40,7 +40,7 @@ class ProdutoDTO(BaseModel):
 	nome: str
 	tipo: str | None = None
 	biologico: bool = True
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
 	certificado: str | None = None

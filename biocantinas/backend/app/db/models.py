@@ -22,8 +22,8 @@ class ProdutoFornecedorORM(Base):
     nome = Column(String, nullable=False)
     tipo = Column(String, nullable=True)  # Categoria do produto: fruta, hortícola, proteína, etc.
     biologico = Column(Boolean, default=True, nullable=False)  # Indica se o produto é biológico
-    intervalo_producao_inicio = Column(Date, nullable=False)
-    intervalo_producao_fim = Column(Date, nullable=False)
+    semana_producao_inicio = Column(Integer, nullable=False)  # Semana do ano (1-52)
+    semana_producao_fim = Column(Integer, nullable=False)  # Semana do ano (1-52)
     capacidade = Column(Integer, nullable=False)
     certificado = Column(String, nullable=True)  # Informação de certificação (texto descritivo)
 

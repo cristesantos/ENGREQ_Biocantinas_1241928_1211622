@@ -15,6 +15,15 @@ class Fornecedor(FornecedorCreate):
 class FornecedorUpdateAprovacao(BaseModel):
 	aprovado: bool
 
+class ProdutoFornecedorAdd(BaseModel):
+	"""DTO para adicionar um novo produto a um fornecedor existente"""
+	nome: str
+	biologico: bool
+	semana_producao_inicio: int
+	semana_producao_fim: int
+	capacidade: int
+	certificado: str | None = None
+
 class OrdemFornecedor(BaseModel):
 	produto: str
 	fornecedores_ids: List[int]
