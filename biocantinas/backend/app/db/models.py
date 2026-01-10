@@ -68,7 +68,7 @@ class ItemRefeicaoORM(Base):
     refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
     produto_id = Column(Integer, ForeignKey("produtos_fornecedor.id"), nullable=True)
     ingrediente = Column(String, nullable=False)
-    quantidade_estimada = Column(Integer, nullable=True)
+    quantidade_estimada = Column(Float, nullable=True)
     
     refeicao = relationship("RefeicaoORM", back_populates="itens")
     produto = relationship("ProdutoFornecedorORM")

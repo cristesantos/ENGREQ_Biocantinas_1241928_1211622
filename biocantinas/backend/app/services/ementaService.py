@@ -220,7 +220,7 @@ class EmentaService:
                     ItemRefeicaoDTO(
                         produto_id=i.produto_id,
                         ingrediente=i.ingrediente,
-                        quantidade_estimada=i.quantidade_estimada
+                        quantidade_estimada=float(i.quantidade_estimada) if i.quantidade_estimada is not None else None
                     )
                     for i in r.itens
                 ]
