@@ -25,6 +25,7 @@ class FornecedorRepo:
 				capacidade=p.capacidade,
 				unidade=p.unidade,
 				certificado=p.certificado,
+				data_inscricao=p.data_inscricao,
 			)
 			for p in model.produtos
 		]
@@ -63,6 +64,7 @@ class FornecedorRepo:
 				capacidade=p.capacidade,
 				unidade=p.unidade,
 				certificado=p.certificado,
+				data_inscricao=p.data_inscricao,
 			)
 			for p in f.produtos
 		]
@@ -79,6 +81,7 @@ class FornecedorRepo:
 				capacidade=p.capacidade,
 				unidade=p.unidade,
 				certificado=p.certificado,
+				data_inscricao=p.data_inscricao,
 			)
 			for p in orm.produtos
 		]

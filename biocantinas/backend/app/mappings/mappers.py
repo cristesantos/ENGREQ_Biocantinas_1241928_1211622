@@ -18,6 +18,7 @@ def dto_to_model_create(dto: FornecedorCreateDTO, new_id: int) -> FornecedorMode
             capacidade=p.capacidade,
             unidade=p.unidade,
             certificado=p.certificado,
+            data_inscricao=p.data_inscricao,
         )
         for p in dto.produtos
     ]
@@ -42,6 +43,7 @@ def model_to_dto(model: FornecedorModel) -> FornecedorDTO:
             capacidade=p.capacidade,
             unidade=p.unidade,
             certificado=p.certificado,
+            data_inscricao=p.data_inscricao,
         )
         for p in model.produtos
     ]

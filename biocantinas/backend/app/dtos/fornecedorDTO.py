@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from datetime import date
 from typing import List
 from .produtoDTO import ProdutoFornecedor
@@ -24,6 +24,7 @@ class ProdutoFornecedorAdd(BaseModel):
 	capacidade: int
 	unidade: str = "kg"
 	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
 	
 	@field_validator('semana_producao_inicio', 'semana_producao_fim')
 	@classmethod

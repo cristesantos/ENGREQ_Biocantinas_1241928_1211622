@@ -1,4 +1,5 @@
 from typing import List, Dict, Protocol
+from datetime import date
 from ..dtos.fornecedorDTO import Fornecedor as FornecedorDTO, OrdemFornecedor, FornecedorCreate as FornecedorCreateDTO, ProdutoFornecedorAdd
 from ..models.fornecedor import FornecedorModel
 from ..models.produto import ProdutoFornecedorModel
@@ -91,6 +92,7 @@ class Services:
             capacidade=produto_data.capacidade,
             unidade=produto_data.unidade,
             certificado=produto_data.certificado,
+            data_inscricao=produto_data.data_inscricao or date.today(),
         )
         
         # Adicionar ao fornecedor
@@ -142,7 +144,13 @@ class Services:
 
         ordens: List[OrdemFornecedor] = []
         for nome_produto, lista in mapa.items():
-            lista_ordenada = sorted(lista, key=lambda f: f.data_inscricao)
+            lista_ordenada = sorted(
+                lista,
+                key=lambda f: next(
+                    (p.data_inscricao for p in f.produtos if p.nome.lower() == nome_produto.lower()),
+                    f.data_inscricao
+                )
+            )
             ordens.append(
                 OrdemFornecedor(
                     produto=nome_produto,

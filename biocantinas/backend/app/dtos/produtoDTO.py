@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from datetime import date
 
 class ProdutoFornecedor(BaseModel):
@@ -10,6 +10,7 @@ class ProdutoFornecedor(BaseModel):
 	capacidade: int
 	unidade: str = "kg"
 	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
 	
 	@field_validator('semana_producao_inicio', 'semana_producao_fim')
 	@classmethod
@@ -36,6 +37,7 @@ class ProdutoCreateDTO(BaseModel):
 	capacidade: int
 	unidade: str = "kg"
 	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
 	
 	@field_validator('semana_producao_inicio', 'semana_producao_fim')
 	@classmethod
@@ -62,6 +64,7 @@ class ProdutoUpdateDTO(BaseModel):
 	capacidade: int
 	unidade: str = "kg"
 	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
 	
 	@field_validator('semana_producao_inicio', 'semana_producao_fim')
 	@classmethod
@@ -90,6 +93,7 @@ class ProdutoDTO(BaseModel):
 	capacidade: int
 	unidade: str = "kg"
 	certificado: str | None = None
+	data_inscricao: date
 	
 	@field_validator('semana_producao_inicio', 'semana_producao_fim')
 	@classmethod

@@ -11,3 +11,4 @@ class ProdutoFornecedorModel:
     biologico: bool = True
     unidade: str = "kg"
     certificado: str | None = None
+    data_inscricao: date = field(default_factory=date.today)

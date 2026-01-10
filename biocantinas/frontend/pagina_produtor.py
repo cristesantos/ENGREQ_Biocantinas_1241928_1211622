@@ -252,19 +252,11 @@ def pagina_produtor(API_URL, auth_token):
                     
                     # Calcular segunda e domingo da semana selecionada
                     def get_week_dates(year, week):
-                        # Primeiro dia do ano
-                        jan_1 = datetime.date(year, 1, 1)
-                        # Encontrar a segunda-feira da semana 1
-                        days_to_monday = (7 - jan_1.weekday()) % 7
-                        if days_to_monday == 0 and jan_1.weekday() != 0:
-                            days_to_monday = 7
-                        week_1_monday = jan_1 + timedelta(days=days_to_monday)
-                        
-                        # Calcular segunda-feira da semana selecionada
-                        target_monday = week_1_monday + timedelta(weeks=week - 1)
-                        # Domingo é 6 dias depois
+                        """Calcula segunda e domingo da semana ISO, alinhado com página do gestor."""
+                        jan4 = datetime.date(year, 1, 4)
+                        week_one_monday = jan4 - timedelta(days=jan4.weekday())
+                        target_monday = week_one_monday + timedelta(weeks=week - 1)
                         target_sunday = target_monday + timedelta(days=6)
-                        
                         return target_monday, target_sunday
                     
                     data_inicio, data_fim = get_week_dates(int(ano_selecionado), int(semana_selecionada))

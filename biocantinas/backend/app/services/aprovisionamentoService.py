@@ -18,6 +18,25 @@ class AprovisionamentoService:
         self.pedido_repo = PedidoRepo(self.session)
         self.produto_repo = ProdutoRepo(self.session)
         self.historico_repo = HistoricoReservasRepo(self.session)
+
+    def _prever_reservas_refeicao(self, dia_semana_nome: str, tipo_refeicao: str, descricao_prato: str) -> tuple[int, str]:
+        """Obtém a previsão de reservas para uma refeição usando histórico por prato e total do dia."""
+        # Histórico específico do prato tem prioridade
+        reservas_prato = self.historico_repo.obter_reservas_prato(dia_semana_nome, tipo_refeicao, descricao_prato)
+        if reservas_prato is not None:
+            return int(reservas_prato), "historico_prato"
+
+        # Sem histórico do prato: usar total do dia e percentual de escolha (se existir)
+        total_refeicoes = self.historico_repo.obter_total_refeicoes(dia_semana_nome, tipo_refeicao)
+        if total_refeicoes is None:
+            return 0, "sem_historico"
+
+        percentual = self.historico_repo.obter_percentual_prato(dia_semana_nome, tipo_refeicao, descricao_prato)
+        if percentual is not None:
+            return int(total_refeicoes * percentual), "percentual_prato"
+
+        # Fallback: dividir igualmente entre ~3 pratos se não houver percentual específico
+        return int(total_refeicoes * 0.33), "fallback_total"
     
     def calcular_necessidades(self, data_inicio: date, data_fim: date) -> Dict[str, int]:
         """
@@ -114,7 +133,6 @@ class AprovisionamentoService:
         dias_semana_map = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]
         
         for ementa in ementas:
-            # Processar cada dia da ementa dentro do período selecionado
             data_atual = max(ementa.data_inicio, data_inicio)
             data_fim_ementa = min(ementa.data_fim, data_fim)
             
@@ -122,43 +140,61 @@ class AprovisionamentoService:
                 dia_semana_nome = dias_semana_map[data_atual.weekday()]
                 dia_semana_num = data_atual.weekday() + 1  # 1=Segunda, 2=Terça, etc
                 
-                # Processar apenas as refeições deste dia da semana
                 for refeicao in ementa.refeicoes:
-                    # Filtrar apenas refeições do dia da semana atual
                     if refeicao.dia_semana != dia_semana_num:
                         continue
+
                     tipo_refeicao = refeicao.tipo.lower()
                     descricao_prato = refeicao.descricao or ""
-                    
-                    # PASSO 1: Buscar número de reservas deste prato específico no histórico
-                    # Ex: "Lasanha vegetariana" no almoço da quarta-feira teve 30 reservas
-                    numero_reservas_historico = self.historico_repo.obter_reservas_prato(
-                        dia_semana_nome, tipo_refeicao, descricao_prato
-                    )
-                    
-                    if numero_reservas_historico is None:
-                        # Sem histórico para este prato específico, usar quantidade base (1 porção)
-                        for item in refeicao.itens:
-                            produto = item.ingrediente
-                            quantidade = item.quantidade_estimada or 0
-                            necessidades_ajustadas[produto] = necessidades_ajustadas.get(produto, 0) + quantidade
-                        continue
-                    
-                    # PASSO 2: Multiplicar quantidade de cada ingrediente pelo número de reservas
-                    # Exemplo: Lasanha com 1kg curgete teve 30 reservas → 1kg × 30 = 30kg
+                    reservas_previstas, _ = self._prever_reservas_refeicao(dia_semana_nome, tipo_refeicao, descricao_prato)
+
+                    # Se ainda não houver qualquer dado histórico, assumir 0 (sem previsão)
+                    if reservas_previstas is None:
+                        reservas_previstas = 0
+
                     for item in refeicao.itens:
                         produto = item.ingrediente
                         quantidade_por_reserva = item.quantidade_estimada or 0
-                        
-                        # Quantidade total = quantidade_por_reserva × número_de_reservas_histórico
-                        # Exemplo: 1kg curgete × 30 reservas = 30kg de curgete
-                        quantidade_total = quantidade_por_reserva * numero_reservas_historico
-                        
+                        quantidade_total = quantidade_por_reserva * reservas_previstas
+
                         necessidades_ajustadas[produto] = necessidades_ajustadas.get(produto, 0) + quantidade_total
                 
                 data_atual += timedelta(days=1)
         
         return necessidades_ajustadas
+
+    def calcular_necessidades_historico(self, data_inicio: date, data_fim: date) -> Dict[str, float]:
+        """Calcula necessidades multiplicando ingredientes pelo número previsto de reservas históricas."""
+        from datetime import timedelta
+
+        ementas = self.ementa_repo.listar_por_periodo(data_inicio, data_fim)
+        necessidades_previstas: Dict[str, float] = {}
+        dias_semana_map = ["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"]
+
+        for ementa in ementas:
+            data_atual = max(ementa.data_inicio, data_inicio)
+            data_fim_ementa = min(ementa.data_fim, data_fim)
+
+            while data_atual <= data_fim_ementa:
+                dia_semana_nome = dias_semana_map[data_atual.weekday()]
+                dia_semana_num = data_atual.weekday() + 1
+
+                for refeicao in ementa.refeicoes:
+                    if refeicao.dia_semana != dia_semana_num:
+                        continue
+
+                    tipo_refeicao = refeicao.tipo.lower()
+                    descricao_prato = refeicao.descricao or ""
+                    reservas_previstas, _ = self._prever_reservas_refeicao(dia_semana_nome, tipo_refeicao, descricao_prato)
+
+                    for item in refeicao.itens:
+                        quantidade_por_reserva = item.quantidade_estimada or 0
+                        quantidade_total = quantidade_por_reserva * (reservas_previstas or 0)
+                        necessidades_previstas[item.ingrediente] = necessidades_previstas.get(item.ingrediente, 0) + quantidade_total
+
+                data_atual += timedelta(days=1)
+
+        return necessidades_previstas
     
     def calcular_desvio(self, planejado: int, realizado: int) -> float:
         """Calcula desvio percentual entre planejado e realizado"""

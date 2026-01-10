@@ -27,6 +27,7 @@ class ProdutoFornecedorORM(Base):
     capacidade = Column(Integer, nullable=False)
     unidade = Column(String, default="kg", nullable=False)  # Unidade de medida: kg, L, unidade, etc.
     certificado = Column(String, nullable=True)  # Informação de certificação (texto descritivo)
+    data_inscricao = Column(Date, nullable=False, default=datetime.utcnow)
 
     fornecedor = relationship("FornecedorORM", back_populates="produtos")
 
