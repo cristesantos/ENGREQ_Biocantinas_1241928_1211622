@@ -23,6 +23,19 @@ def get_preview_aprovisionamento(API_URL, auth_token, data_inicio, data_fim):
     return r.json()
 
 def pagina_gestor_cantina(API_URL, auth_token):
+    # Aumenta fonte das abas via CSS customizado
+    st.markdown(
+        """
+        <style>
+        .stTabs [data-baseweb="tab"] p {
+            font-size: 24px !important;
+            font-weight: 600;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     st.header("Gestão da Cantina")
     
     # Criar abas (4 abas reordenadas com emojis)
@@ -43,8 +56,6 @@ def pagina_gestor_cantina(API_URL, auth_token):
         # Inicializar session_state
         if "preview_tab1_dados" not in st.session_state:
             st.session_state.preview_tab1_dados = None
-        if "fator_ajuste_tab1" not in st.session_state:
-            st.session_state.fator_ajuste_tab1 = 1.0
         
         col1, col2 = st.columns([1, 3])
         with col1:
@@ -82,7 +93,6 @@ def pagina_gestor_cantina(API_URL, auth_token):
                         "data_inicio": data_inicio_prev,
                         "data_fim": data_fim_prev
                     }
-                    st.session_state.fator_ajuste_tab1 = 1.0
                 else:
                     st.error(f"❌ Erro {response.status_code}: {response.json().get('detail', 'Erro desconhecido')}")
             
@@ -127,61 +137,13 @@ def pagina_gestor_cantina(API_URL, auth_token):
                 st.caption("Quantidade total de produtos com histórico aplicado")
                 
                 if dados.get("necessidades_previstas_historico"):
-                    # ========== FATOR DE CORREÇÃO (FORA DA CONDICIONAL) ==========
-                    st.markdown("**⚙️ Fator de Correção**")
-                    col_fator, col_btn = st.columns([2, 1])
-                    with col_fator:
-                        fator_input = st.number_input(
-                            "Fator de Correção",
-                            min_value=0.0,
-                            max_value=2.0,
-                            value=st.session_state.fator_ajuste_tab1,
-                            step=0.05,
-                            help="1.0 = sem ajuste | 1.2 = +20% | 0.8 = -20%",
-                            key="fator_input_tab1"
-                        )
-                    
-                    with col_btn:
-                        st.write("")  # Espaçamento
-                        if st.button("✅ Ajustar", key="btn_ajustar_tab1"):
-                            # Refazer chamada ao API com fator de correção
-                            try:
-                                response = requests.get(
-                                    f"{API_URL}/aprovisionamento/preview",
-                                    params={
-                                        "data_inicio": str(data_inicio_prev),
-                                        "data_fim": str(data_fim_prev),
-                                        "fator_correcao": fator_input
-                                    },
-                                    headers={"Authorization": f"Bearer {auth_token}"}
-                                )
-                                
-                                if response.status_code == 200:
-                                    st.session_state.preview_tab1_dados["dados"] = response.json()
-                                    st.session_state.fator_ajuste_tab1 = fator_input
-                                else:
-                                    st.error(f"❌ Erro ao ajustar: {response.status_code}")
-                            except Exception as e:
-                                st.error(f"❌ Erro: {str(e)}")
-                    
-                    # Mostrar info sobre o ajuste atual
-                    fator_atual = st.session_state.fator_ajuste_tab1
-                    if fator_atual != 1.0:
-                        variacao = (fator_atual - 1.0) * 100
-                        sinal = "+" if variacao > 0 else ""
-                        st.success(f"✅ Fator aplicado: {fator_atual:.2f} ({sinal}{variacao:.1f}%)")
-                    
-                    st.divider()
-                    
-                    # Exibir necessidades com valores ajustados (backend já aplica fator)
                     necessidades_ajustadas = dados.get("necessidades_ajustadas", dados.get("necessidades_previstas_historico", {}))
                     necessidades_originais = dados.get("necessidades_previstas", {})
                     
                     df_planejadas = pd.DataFrame([
                         {
                             "Produto": prod,
-                            "Quantidade Original (kg)": necessidades_originais.get(prod, qtd),
-                            "Quantidade Ajustada (kg)": qtd
+                            "Quantidade Prevista (kg)": necessidades_originais.get(prod, qtd)
                         }
                         for prod, qtd in necessidades_ajustadas.items()
                     ])
@@ -229,15 +191,10 @@ def pagina_gestor_cantina(API_URL, auth_token):
         from datetime import date as date_class
         semana_atual = date_class.today().isocalendar()[1]
         
-        # Usar fator da TAB 1 se houver dados preview
-        fator_para_ordem = 1.0
-        if st.session_state.get("preview_tab1_dados"):
-            fator_para_ordem = st.session_state.get("fator_ajuste_tab1", 1.0)
-        
         try:
             response = requests.get(
                 f"{API_URL}/fornecedores/ordem",
-                params={"semana": int(semana_atual), "fator_correcao": fator_para_ordem},
+                params={"semana": int(semana_atual)},
                 headers={"Authorization": f"Bearer {auth_token}"}
             )
             
