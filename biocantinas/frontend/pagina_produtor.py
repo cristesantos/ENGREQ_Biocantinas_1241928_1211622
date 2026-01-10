@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import json
 from datetime import date, timedelta
 import pandas as pd
 
@@ -13,6 +14,14 @@ def adicionar_produto_fornecedor(API_URL, auth_token, payload):
     """Adiciona um novo produto ao fornecedor do usuário logado"""
     headers = {"Authorization": f"Bearer {auth_token}"}
     r = requests.post(f"{API_URL}/fornecedores/meu-perfil/produtos", json=payload, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def upload_certificado(API_URL, auth_token, arquivo):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    files = {"file": (arquivo.name, arquivo, getattr(arquivo, "type", None) or "application/octet-stream")}
+    r = requests.post(f"{API_URL}/fornecedores/meu-perfil/certificados", headers=headers, files=files)
     r.raise_for_status()
     return r.json()
 
@@ -528,14 +537,24 @@ def pagina_produtor(API_URL, auth_token):
             disabled=not biologico
         )
         
-        certificado_info = None
-        if biologico and (certificado_texto or arquivo_certificado):
-            certificado_info = certificado_texto
-            if arquivo_certificado:
-                certificado_info = f"{certificado_texto}\n[Arquivo: {arquivo_certificado.name}]" if certificado_texto else f"[Arquivo: {arquivo_certificado.name}]"
-
         if st.button("Submeter inscrição"):
             if prod_nome and tipo_produto:
+                certificado_payload = None
+                if biologico and (certificado_texto or arquivo_certificado):
+                    certificado_payload = {}
+                    if certificado_texto:
+                        certificado_payload["texto"] = certificado_texto.strip()
+                    if arquivo_certificado:
+                        try:
+                            upload_resp = upload_certificado(API_URL, auth_token, arquivo_certificado)
+                            certificado_payload["arquivo_url"] = upload_resp.get("url")
+                            certificado_payload["arquivo_nome"] = upload_resp.get("filename") or arquivo_certificado.name
+                        except Exception as e:
+                            st.error(f"❌ Erro ao enviar certificado: {str(e)}")
+                            st.stop()
+
+                certificado_info = json.dumps(certificado_payload) if certificado_payload else None
+
                 payload = {
                     "nome": prod_nome,
                     "biologico": biologico,

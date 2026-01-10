@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, Depends
+from datetime import datetime
+from pathlib import Path
+import shutil
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import List
 from ..dtos.fornecedorDTO import Fornecedor, FornecedorCreate, FornecedorUpdateAprovacao, OrdemFornecedor, ProdutoFornecedorAdd
 from ..services.fornecedorService import get_services
@@ -7,6 +10,9 @@ from ..dtos.userDTO import User
 from ..models.catalogo_produtos import produto_existe, CATALOGO_PRODUTOS
 
 router = APIRouter(tags=["fornecedores"])
+
+CERT_DIR = Path(__file__).resolve().parent.parent / "certificados"
+CERT_DIR.mkdir(parents=True, exist_ok=True)
 
 @router.get("/fornecedores", response_model=List[Fornecedor])
 def listar_fornecedores():
@@ -91,3 +97,13 @@ def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = D
         return svc.aprovar_fornecedor(fid, body.aprovado)
     except ValueError:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+
+
+@router.post("/fornecedores/meu-perfil/certificados")
+def upload_certificado(file: UploadFile = File(...), user: User = Depends(require_role("PRODUTOR"))):
+    """Recebe um ficheiro de certificação e devolve o caminho público."""
+    filename = f"{user.id}_{int(datetime.utcnow().timestamp())}_{file.filename}"
+    save_path = CERT_DIR / filename
+    with save_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"url": f"/certificados/{filename}", "filename": file.filename}

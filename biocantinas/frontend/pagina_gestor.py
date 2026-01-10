@@ -1,5 +1,7 @@
 import streamlit as st
 import requests
+import json
+import html
 
 def list_fornecedores(API_URL, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
@@ -78,6 +80,31 @@ def pagina_gestor(API_URL, auth_token):
                             for p in produtos:
                                 unidade = p.get('unidade', 'kg')
                                 st.write(f"  • {p['nome']} ({p.get('tipo', 'N/A')}) - Capacidade: {p.get('capacidade', 'N/A')} {unidade}")
+
+                                cert = p.get('certificado')
+                                if cert:
+                                    texto_cert = None
+                                    arquivo_url = None
+                                    arquivo_nome = None
+                                    try:
+                                        cert_obj = json.loads(cert)
+                                        texto_cert = cert_obj.get("texto")
+                                        arquivo_url = cert_obj.get("arquivo_url")
+                                        arquivo_nome = cert_obj.get("arquivo_nome")
+                                    except Exception:
+                                        texto_cert = cert
+                                    partes_html = []
+                                    if texto_cert:
+                                        partes_html.append(html.escape(texto_cert))
+                                    if arquivo_url:
+                                        resolved_url = arquivo_url if str(arquivo_url).startswith("http") else f"{API_URL}{arquivo_url}"
+                                        link_label = html.escape(arquivo_nome or "Ver certificado")
+                                        partes_html.append(f"<a href='{resolved_url}' target='_blank' rel='noopener noreferrer'>{link_label}</a>")
+                                    conteudo_cert = "<br>".join(partes_html) if partes_html else html.escape(str(cert))
+                                    st.markdown(
+                                        f"<div style='margin-left:12px;'>📜 Certificado:<br><div style='background: #f7f7f9; padding: 6px; border-radius: 6px;'>{conteudo_cert}</div></div>",
+                                        unsafe_allow_html=True,
+                                    )
                         else:
                             st.write("Sem produtos cadastrados")
                 
