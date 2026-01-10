@@ -1,6 +1,13 @@
 from typing import List, Dict, Protocol
 from datetime import date
-from ..dtos.fornecedorDTO import Fornecedor as FornecedorDTO, OrdemFornecedor, FornecedorCreate as FornecedorCreateDTO, ProdutoFornecedorAdd
+from ..dtos.fornecedorDTO import (
+    Fornecedor as FornecedorDTO,
+    OrdemFornecedor,
+    FornecedorCreate as FornecedorCreateDTO,
+    ProdutoFornecedorAdd,
+    FornecedorEstadoUpdate,
+    FreguesiaFecho,
+)
 from ..models.fornecedor import FornecedorModel
 from ..models.produto import ProdutoFornecedorModel
 from ..mappings.mappers import dto_to_model_create, model_to_dto
@@ -13,6 +20,9 @@ class Repository(Protocol):
     def listar_fornecedores(self) -> List[FornecedorModel]: ...
     def obter_fornecedor(self, fid: int) -> FornecedorModel | None: ...
     def atualizar_fornecedor(self, f: FornecedorModel) -> None: ...
+    def atualizar_estado(self, fornecedor_id: int, em_quarentena: bool | None, freguesia: str | None) -> None: ...
+    def definir_fecho_freguesia(self, nome: str, ativo: bool): ...
+    def listar_fechos_freguesia(self, apenas_ativos: bool = False): ...
 
 class SqlRepository:
     def __init__(self):
@@ -31,6 +41,15 @@ class SqlRepository:
 
     def atualizar_fornecedor(self, f: FornecedorModel) -> None:
         self.repo.atualizar_fornecedor(f)
+
+    def atualizar_estado(self, fornecedor_id: int, em_quarentena: bool | None, freguesia: str | None) -> None:
+        self.repo.atualizar_estado(fornecedor_id, em_quarentena, freguesia)
+
+    def definir_fecho_freguesia(self, nome: str, ativo: bool):
+        return self.repo.definir_fecho_freguesia(nome, ativo)
+
+    def listar_fechos_freguesia(self, apenas_ativos: bool = False):
+        return self.repo.listar_fechos_freguesia(apenas_ativos)
 
 class Services:
     def __init__(self, repo: Repository | None = None):
@@ -66,6 +85,14 @@ class Services:
             if f.usuario_id == usuario_id:
                 return model_to_dto(f)
         return None
+
+    def atualizar_estado_fornecedor(self, fid: int, estado: FornecedorEstadoUpdate) -> FornecedorDTO:
+        fornecedor = self.repo.obter_fornecedor(fid)
+        if not fornecedor:
+            raise ValueError("Fornecedor não encontrado")
+        self.repo.atualizar_estado(fid, estado.em_quarentena, estado.freguesia)
+        atualizado = self.repo.obter_fornecedor(fid)
+        return model_to_dto(atualizado)
     
     def adicionar_produto_fornecedor(self, usuario_id: int, produto_data: ProdutoFornecedorAdd) -> FornecedorDTO:
         """Adiciona um novo produto a um fornecedor existente"""
@@ -107,6 +134,17 @@ class Services:
         fornecedor = self.repo.obter_fornecedor(fid)
         if not fornecedor:
             raise ValueError("Fornecedor não encontrado")
+
+        # Não permitir aprovação se estiver em quarentena
+        if aprovado and fornecedor.em_quarentena:
+            raise ValueError("Fornecedor em quarentena não pode ser aprovado")
+
+        # Não permitir aprovação se a freguesia estiver em fecho sanitário
+        if aprovado and fornecedor.freguesia:
+            fechadas = {f.nome.lower() for f in self.repo.listar_fechos_freguesia(apenas_ativos=True)}
+            if fornecedor.freguesia.lower() in fechadas:
+                raise ValueError("Freguesia em fecho sanitário não pode ser aprovada")
+
         fornecedor.aprovado = aprovado
         self.repo.atualizar_fornecedor(fornecedor)
         return model_to_dto(fornecedor)
@@ -130,7 +168,8 @@ class Services:
         if not (1 <= semana <= 52):
             raise ValueError(f"Semana deve estar entre 1 e 52, recebido: {semana}")
         
-        fornecedores = [f for f in self.repo.listar_fornecedores() if f.aprovado]
+        fornecedores = [f for f in self.repo.listar_fornecedores() if f.aprovado and not f.em_quarentena]
+        freguesias_bloqueadas = {f.nome.lower() for f in self.repo.listar_fechos_freguesia(apenas_ativos=True)}
         mapa: Dict[str, List[FornecedorModel]] = {}
 
         for f in fornecedores:
@@ -138,6 +177,10 @@ class Services:
                 # Verificar se o produto está disponível nesta semana
                 if not (p.semana_producao_inicio <= semana <= p.semana_producao_fim):
                     # Produto não está disponível nesta semana
+                    continue
+
+                # Bloquear fornecedores em fecho sanitário por freguesia
+                if f.freguesia and f.freguesia.lower() in freguesias_bloqueadas:
                     continue
                 
                 mapa.setdefault(p.nome, []).append(f)
@@ -158,6 +201,23 @@ class Services:
                 )
             )
         return ordens
+
+    def definir_fecho_freguesia(self, nome: str, ativo: bool) -> FreguesiaFecho:
+        registro = self.repo.definir_fecho_freguesia(nome, ativo)
+
+        # Se fechar uma freguesia, reprovar todos os fornecedores nela
+        if ativo:
+            nome_normalizado = (nome or "").strip().lower()
+            if nome_normalizado:
+                for f in self.repo.listar_fornecedores():
+                    if (f.freguesia or "").strip().lower() == nome_normalizado:
+                        f.aprovado = False
+                        self.repo.atualizar_fornecedor(f)
+
+        return FreguesiaFecho(nome=registro.nome, ativo=registro.ativo)
+
+    def listar_fechos_freguesia(self, apenas_ativos: bool = False) -> List[FreguesiaFecho]:
+        return [FreguesiaFecho(nome=r.nome, ativo=r.ativo) for r in self.repo.listar_fechos_freguesia(apenas_ativos)]
 
 _services = Services()
 

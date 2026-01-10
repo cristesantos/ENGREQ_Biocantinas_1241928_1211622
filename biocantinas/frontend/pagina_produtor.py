@@ -18,6 +18,18 @@ def adicionar_produto_fornecedor(API_URL, auth_token, payload):
     return r.json()
 
 
+def patch_estado_fornecedor(API_URL, auth_token, fid, em_quarentena=None, freguesia=None):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    body = {}
+    if em_quarentena is not None:
+        body["em_quarentena"] = em_quarentena
+    if freguesia is not None:
+        body["freguesia"] = freguesia
+    r = requests.patch(f"{API_URL}/fornecedores/{fid}/estado", json=body, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
 def upload_certificado(API_URL, auth_token, arquivo):
     headers = {"Authorization": f"Bearer {auth_token}"}
     files = {"file": (arquivo.name, arquivo, getattr(arquivo, "type", None) or "application/octet-stream")}
@@ -96,7 +108,7 @@ def pagina_produtor(API_URL, auth_token):
                     produtos_aprovados = 0
                     produtos_nao_aprovados = total_produtos
                 
-                # Mostrar nome, data de inscrição, e status dos produtos
+                # Mostrar nome, data de inscrição, freguesia e status dos produtos
                 # Linha 1: 5 colunas
                 col1, col2, col3, col4, col5 = st.columns(5)
                 with col1:
@@ -104,7 +116,10 @@ def pagina_produtor(API_URL, auth_token):
                 with col2:
                     data_inscricao = perfil.get("data_inscricao", "N/A")
                     st.write(f"<h3>📅 Data de Inscrição</h3><h2>{data_inscricao}</h2>", unsafe_allow_html=True)
-                # col3, col4, col5 ficam em branco
+                with col3:
+                    freguesia = perfil.get("freguesia", "N/A") or "N/A"
+                    st.write(f"<h3>📍 Freguesia</h3><h2>{freguesia}</h2>", unsafe_allow_html=True)
+                # col4, col5 ficam em branco
                 
                 st.space()
                 
@@ -391,9 +406,6 @@ def pagina_produtor(API_URL, auth_token):
     
     # ============ TAB 3: REGISTRO DE PRODUTOS ============
     with tab3:
-        st.subheader("📝 Registro de Produtor")
-        
-        # Obter dados do perfil (sempre existirá para produtores)
         try:
             perfil_response = requests.get(
                 f"{API_URL}/fornecedores/meu-perfil",
@@ -403,25 +415,18 @@ def pagina_produtor(API_URL, auth_token):
             if perfil_response.status_code == 200:
                 perfil = perfil_response.json()
                 nome = perfil.get("nome", "N/A")
-                data_inscricao_str = perfil.get("data_inscricao", "N/A")
-                
-                # Mostrar dados não editáveis
-                st.metric("Nome do Produtor", nome)
-                st.metric("Data de Inscrição", data_inscricao_str)
-                
-                # Converter string para objeto date
-                try:
-                    data_inscricao = date.fromisoformat(data_inscricao_str)
-                except:
-                    data_inscricao = date.today()
+                freguesia_atual = (perfil.get("freguesia") or "").strip()
+                st.caption(f"Produtor: {nome}")
+                if not freguesia_atual:
+                    st.warning("Freguesia não configurada. Contacte o gestor para atualizar o perfil.")
             else:
                 st.error("❌ Erro ao carregar perfil do produtor.")
                 nome = "Erro"
-                data_inscricao = date.today()
+                freguesia_atual = ""
         except Exception as e:
             st.error(f"❌ Erro ao conectar com API: {str(e)}")
             nome = "Erro"
-            data_inscricao = date.today()
+            freguesia_atual = ""
 
         st.subheader("Produtos")
 
@@ -538,6 +543,10 @@ def pagina_produtor(API_URL, auth_token):
         )
         
         if st.button("Submeter inscrição"):
+            if not freguesia_atual:
+                st.error("Freguesia em falta no seu perfil. Contacte o gestor para atualizar.")
+                st.stop()
+
             if prod_nome and tipo_produto:
                 certificado_payload = None
                 if biologico and (certificado_texto or arquivo_certificado):

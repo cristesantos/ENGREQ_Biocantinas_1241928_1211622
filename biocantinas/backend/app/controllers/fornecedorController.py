@@ -3,7 +3,15 @@ from pathlib import Path
 import shutil
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import List
-from ..dtos.fornecedorDTO import Fornecedor, FornecedorCreate, FornecedorUpdateAprovacao, OrdemFornecedor, ProdutoFornecedorAdd
+from ..dtos.fornecedorDTO import (
+    Fornecedor,
+    FornecedorCreate,
+    FornecedorUpdateAprovacao,
+    OrdemFornecedor,
+    ProdutoFornecedorAdd,
+    FornecedorEstadoUpdate,
+    FreguesiaFecho,
+)
 from ..services.fornecedorService import get_services
 from ..auth.jwt import get_current_user, require_role
 from ..dtos.userDTO import User
@@ -97,6 +105,27 @@ def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = D
         return svc.aprovar_fornecedor(fid, body.aprovado)
     except ValueError:
         raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+
+
+@router.patch("/fornecedores/{fid}/estado", response_model=Fornecedor)
+def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: User = Depends(require_role("GESTOR"))):
+    svc = get_services()
+    try:
+        return svc.atualizar_estado_fornecedor(fid, body)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Fornecedor não encontrado")
+
+
+@router.get("/freguesias/fechos", response_model=List[FreguesiaFecho])
+def listar_fechos_freguesia(user: User = Depends(require_role("GESTOR"))):
+    svc = get_services()
+    return svc.listar_fechos_freguesia(False)
+
+
+@router.patch("/freguesias/fechos", response_model=FreguesiaFecho)
+def definir_fecho_freguesia(body: FreguesiaFecho, user: User = Depends(require_role("GESTOR"))):
+    svc = get_services()
+    return svc.definir_fecho_freguesia(body.nome, body.ativo)
 
 
 @router.post("/fornecedores/meu-perfil/certificados")
