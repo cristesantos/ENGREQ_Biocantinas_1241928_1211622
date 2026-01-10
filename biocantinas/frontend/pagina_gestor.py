@@ -25,6 +25,32 @@ def get_ordem(API_URL, auth_token, semana: int):
     r.raise_for_status()
     return r.json()
 
+
+def patch_estado_fornecedor(API_URL, auth_token, fid, em_quarentena=None, freguesia=None):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    body = {}
+    if em_quarentena is not None:
+        body["em_quarentena"] = em_quarentena
+    if freguesia is not None:
+        body["freguesia"] = freguesia
+    r = requests.patch(f"{API_URL}/fornecedores/{fid}/estado", json=body, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def list_fechos(API_URL, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    r = requests.get(f"{API_URL}/freguesias/fechos", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def patch_fecho(API_URL, auth_token, nome: str, ativo: bool):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    r = requests.patch(f"{API_URL}/freguesias/fechos", json={"nome": nome, "ativo": ativo}, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
 def get_ementas(API_URL, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
     r = requests.get(f"{API_URL}/ementas", headers=headers)
@@ -61,6 +87,20 @@ def pagina_gestor(API_URL, auth_token):
             st.rerun()
 
         fornecedores = list_fornecedores(API_URL, auth_token)
+
+        # Carregar freguesias em fecho para bloquear aprovação
+        fechados_data = []
+        freguesias_fechadas = set()
+        try:
+            fechados_data = list_fechos(API_URL, auth_token)
+            freguesias_fechadas = {
+                (f.get("nome") or "").strip().lower()
+                for f in fechados_data
+                if f.get("ativo")
+            }
+        except requests.HTTPError as e:
+            st.error(f"Erro ao carregar fechos: {e}")
+
         if fornecedores:
             st.subheader("Lista de Fornecedores")
             for f in fornecedores:
@@ -72,6 +112,25 @@ def pagina_gestor(API_URL, auth_token):
                             f"Data inscrição: {f['data_inscricao']} | "
                             f"Aprovado: {f['aprovado']}"
                         )
+
+                        estado_quarentena = f.get('em_quarentena', False)
+                        freguesia_atual = f.get('freguesia') or ""
+                        freguesia_fechada = (freguesia_atual.strip().lower() in freguesias_fechadas) if freguesia_atual else False
+                        st.markdown(
+                            f"🛡️ Quarentena: **{'Sim' if estado_quarentena else 'Não'}** | "
+                            f"📍 Freguesia: **{freguesia_atual or 'N/D'}**"
+                        )
+
+                        cols_estado = st.columns([1])
+                        with cols_estado[0]:
+                            if st.button(
+                                "Ativar quarentena" if not estado_quarentena else "Remover quarentena",
+                                key=f"q_{f['id']}",
+                                type="secondary",
+                                help="Bloqueia todos os produtos deste fornecedor",
+                            ):
+                                patch_estado_fornecedor(API_URL, auth_token, f["id"], em_quarentena=not estado_quarentena)
+                                st.rerun()
                         
                         # Listar produtos
                         produtos = f.get('produtos', [])
@@ -110,9 +169,14 @@ def pagina_gestor(API_URL, auth_token):
                 
                 with col2:
                     if not f["aprovado"]:
-                        if st.button("Aprovar", key=f"ap_{f['id']}"):
-                            patch_aprovacao(API_URL, auth_token, f["id"], True)
-                            st.rerun()
+                        if estado_quarentena:
+                            st.caption("Não é possível aprovar enquanto estiver em quarentena.")
+                        elif freguesia_fechada:
+                            st.caption("Não é possível aprovar enquanto a freguesia estiver fechada.")
+                        else:
+                            if st.button("Aprovar", key=f"ap_{f['id']}"):
+                                patch_aprovacao(API_URL, auth_token, f["id"], True)
+                                st.rerun()
                 
                 with col3:
                     if f["aprovado"]:
@@ -121,6 +185,59 @@ def pagina_gestor(API_URL, auth_token):
                             st.rerun()
         else:
             st.info("Ainda não há fornecedores.")
+
+        st.divider()
+        st.subheader("🚫 Fechos sanitários por freguesia")
+
+        try:
+            fechados = fechados_data or list_fechos(API_URL, auth_token)
+            fechados_ativos = [f for f in fechados if f.get("ativo")]
+            if fechados_ativos:
+                st.write("Freguesias bloqueadas:")
+                for fecho in fechados_ativos:
+                    col_a, col_b = st.columns([3, 1])
+                    with col_a:
+                        st.write(f"• {fecho['nome']}")
+                    with col_b:
+                        if st.button("Reabrir", key=f"reabrir_{fecho['nome']}"):
+                            patch_fecho(API_URL, auth_token, fecho["nome"], False)
+                            st.rerun()
+            else:
+                st.caption("Nenhuma freguesia em fecho sanitário.")
+
+            FREGUESIAS_CINFAES = [
+                "Alhões",
+                "Bustelo",
+                "Cinfães",
+                "Espadanedo",
+                "Ferreiros de Tendais",
+                "Fornelos",
+                "Freigil e Miomães",
+                "Moimenta",
+                "Nespereira",
+                "Oliveira do Douro",
+                "Santiago de Piães",
+                "São Cristóvão de Nogueira",
+                "Souselo",
+                "Tarouquela",
+                "Tendais",
+                "Travanca",
+            ]
+
+            nova_freguesia = st.selectbox(
+                "Selecionar freguesia para fecho",
+                options=[""] + FREGUESIAS_CINFAES,
+                key="nova_fecho",
+                help="Ao fechar, todos os fornecedores dessa freguesia ficam reprovados automaticamente",
+            )
+            if st.button("Fechar freguesia", key="btn_fechar_freg"):
+                if nova_freguesia.strip():
+                    patch_fecho(API_URL, auth_token, nova_freguesia.strip(), True)
+                    st.rerun()
+                else:
+                    st.error("Indique o nome da freguesia.")
+        except requests.HTTPError as e:
+            st.error(f"Erro ao gerir fechos: {e}")
     
     # Aba 2: Ordem de Fornecimento
     with tab2:
