@@ -29,6 +29,8 @@ def dto_to_model_create(dto: FornecedorCreateDTO, new_id: int) -> FornecedorMode
         produtos=produtos,
         aprovado=False,
         usuario_id=None,  # Será definido no serviço
+        em_quarentena=dto.em_quarentena,
+        freguesia=dto.freguesia,
     )
 
 
@@ -53,6 +55,8 @@ def model_to_dto(model: FornecedorModel) -> FornecedorDTO:
         data_inscricao=model.data_inscricao,
         produtos=produtos,
         aprovado=model.aprovado,
+        em_quarentena=model.em_quarentena,
+        freguesia=model.freguesia,
     )
 
 

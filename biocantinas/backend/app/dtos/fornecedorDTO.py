@@ -7,6 +7,8 @@ class FornecedorCreate(BaseModel):
 	nome: str
 	data_inscricao: date
 	produtos: List[ProdutoFornecedor]
+	freguesia: str | None = None
+	em_quarentena: bool = False
 
 class Fornecedor(FornecedorCreate):
 	id: int
@@ -14,6 +16,14 @@ class Fornecedor(FornecedorCreate):
 
 class FornecedorUpdateAprovacao(BaseModel):
 	aprovado: bool
+
+class FornecedorEstadoUpdate(BaseModel):
+	em_quarentena: bool | None = None
+	freguesia: str | None = None
+
+class FreguesiaFecho(BaseModel):
+	nome: str
+	ativo: bool = True
 
 class ProdutoFornecedorAdd(BaseModel):
 	"""DTO para adicionar um novo produto a um fornecedor existente"""

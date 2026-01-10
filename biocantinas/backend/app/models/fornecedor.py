@@ -12,3 +12,5 @@ class FornecedorModel:
     produtos: List[ProdutoFornecedorModel] = field(default_factory=list)
     aprovado: bool = False
     usuario_id: int | None = None  # Vínculo com o usuário
+    em_quarentena: bool = False
+    freguesia: str | None = None

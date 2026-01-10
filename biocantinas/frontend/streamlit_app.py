@@ -279,6 +279,32 @@ if not st.session_state.auth_token:
                 
                 produtor_nome = st.text_input("Nome do Produtor/Empresa", key="produtor_nome")
                 st.caption(f"📅 Data de Inscrição: {date.today().strftime('%Y-%m-%d')}")
+
+                FREGUESIAS_CINFAES = [
+                    "Alhões",
+                    "Bustelo",
+                    "Cinfães",
+                    "Espadanedo",
+                    "Ferreiros de Tendais",
+                    "Fornelos",
+                    "Freigil e Miomães",
+                    "Moimenta",
+                    "Nespereira",
+                    "Oliveira do Douro",
+                    "Santiago de Piães",
+                    "São Cristóvão de Nogueira",
+                    "Souselo",
+                    "Tarouquela",
+                    "Tendais",
+                    "Travanca",
+                ]
+
+                freg_escolhida = st.selectbox(
+                    "Freguesia (Cinfães)",
+                    options=[""] + FREGUESIAS_CINFAES,
+                    help="Obrigatório para gerir quarentena/fecho sanitário",
+                    key="reg_freguesia",
+                )
                 
                 # Lista fixa de produtos com seus tipos
                 PRODUTOS_DISPONIVEIS = {
@@ -424,7 +450,7 @@ if not st.session_state.auth_token:
                 
                 # Botão de criar conta para PRODUTOR (com validação completa)
                 if st.button("Criar conta", width='stretch', type="primary"):
-                    if reg_username and reg_password and produtor_nome and len(produtos_list) > 0:
+                    if reg_username and reg_password and produtor_nome and len(produtos_list) > 0 and freg_escolhida:
                         try:
                             # 1. Criar usuário
                             user_response = requests.post(
@@ -447,7 +473,8 @@ if not st.session_state.auth_token:
                                     fornecedor_payload = {
                                         "nome": produtor_nome,
                                         "data_inscricao": str(date.today()),
-                                        "produtos": produtos_list
+                                        "produtos": produtos_list,
+                                        "freguesia": freg_escolhida,
                                     }
                                     
                                     fornecedor_response = requests.post(
@@ -470,7 +497,7 @@ if not st.session_state.auth_token:
                         except Exception as e:
                             st.error(f"Erro ao finalizar cadastro: {str(e)}")
                     else:
-                        st.error("Preencha todos os campos: usuário, senha, nome do produtor e pelo menos um produto!")
+                        st.error("Preencha todos os campos: usuário, senha, nome do produtor, freguesia e pelo menos um produto!")
             
             else:
                 # Para outros papéis (não PRODUTOR), botão simples
