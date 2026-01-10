@@ -13,12 +13,13 @@ class FornecedorRepo:
 			nome=model.nome,
 			data_inscricao=model.data_inscricao,
 			aprovado=model.aprovado,
+			local=model.local,
+			certificado=model.certificado,
 			usuario_id=model.usuario_id,
 		)
 		orm.produtos = [
 			ProdutoFornecedorORM(
-				nome=p.nome,
-				tipo=p.tipo,
+				produto_id=p.produto_id,
 				biologico=p.biologico,
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
@@ -47,18 +48,27 @@ class FornecedorRepo:
 		orm.nome = f.nome
 		orm.data_inscricao = f.data_inscricao
 		orm.aprovado = f.aprovado
+		orm.local = f.local
+		orm.certificado = f.certificado
 		orm.usuario_id = f.usuario_id
 		self.session.commit()
 
 	def _to_model(self, orm: FornecedorORM) -> FornecedorModel:
 		produtos = [
 			ProdutoFornecedorModel(
-				nome=p.nome,
-				tipo=p.tipo,
-				biologico=p.biologico,
+				id=p.id,
+				fornecedor_id=p.fornecedor_id,
+				produto_id=p.produto_id,
+				produto_nome=p.produto.nome if p.produto else "Desconhecido",
+				produto_tipo=p.produto.tipo if p.produto else None,
+				preco_unitario=p.preco_unitario,
+				capacidade=p.capacidade,
+				unidade_medida=p.unidade_medida,
 				intervalo_producao_inicio=p.intervalo_producao_inicio,
 				intervalo_producao_fim=p.intervalo_producao_fim,
-				capacidade=p.capacidade,
+				prioridade=p.prioridade,
+				biologico=p.biologico,
+				disponivel=p.disponivel,
 			)
 			for p in orm.produtos
 		]
@@ -68,5 +78,7 @@ class FornecedorRepo:
 			data_inscricao=orm.data_inscricao,
 			produtos=produtos,
 			aprovado=orm.aprovado,
+			local=orm.local,
+			certificado=orm.certificado,
 			usuario_id=orm.usuario_id,
 		)

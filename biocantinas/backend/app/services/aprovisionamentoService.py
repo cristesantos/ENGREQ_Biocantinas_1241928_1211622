@@ -5,7 +5,7 @@ from ..repositories.ementaRepo import EmentaRepo
 from ..repositories.reservaRepo import ReservaRepo
 from ..repositories.planoProducaoRepo import PlanoProducaoRepo
 from ..repositories.pedidoRepo import PedidoRepo
-from ..repositories.produtoRepo import ProdutoRepo
+from ..repositories.produtoFornecedorRepo import ProdutoFornecedorRepo
 from ..repositories.historicoReservasRepo import HistoricoReservasRepo
 
 class AprovisionamentoService:
@@ -16,7 +16,7 @@ class AprovisionamentoService:
         self.reserva_repo = ReservaRepo(self.session)
         self.plano_repo = PlanoProducaoRepo(self.session)
         self.pedido_repo = PedidoRepo(self.session)
-        self.produto_repo = ProdutoRepo(self.session)
+        self.produto_repo = ProdutoFornecedorRepo(self.session)
         self.historico_repo = HistoricoReservasRepo(self.session)
     
     def calcular_necessidades(self, data_inicio: date, data_fim: date) -> Dict[str, int]:

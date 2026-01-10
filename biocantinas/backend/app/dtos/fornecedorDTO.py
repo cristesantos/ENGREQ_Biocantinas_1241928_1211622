@@ -1,12 +1,14 @@
 from pydantic import BaseModel
 from datetime import date
 from typing import List
-from .produtoDTO import ProdutoFornecedor
+from .produtoDTO import ProdutoFornecedorDTO
 
 class FornecedorCreate(BaseModel):
 	nome: str
 	data_inscricao: date
-	produtos: List[ProdutoFornecedor]
+	local: bool = False
+	certificado: bool = False
+	produtos: List[ProdutoFornecedorDTO]
 
 class Fornecedor(FornecedorCreate):
 	id: int

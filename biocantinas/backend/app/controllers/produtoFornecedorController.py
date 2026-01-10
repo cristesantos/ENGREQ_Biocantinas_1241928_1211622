@@ -1,16 +1,16 @@
 from fastapi import APIRouter, HTTPException, Depends
-from ..dtos.produtoDTO import ProdutoDTO, ProdutoCreateDTO, ProdutoUpdateDTO
-from ..services.produtoService import get_produto_service
+from ..dtos.produtoDTO import ProdutoDTO, ProdutoFornecedorCreateDTO, ProdutoFornecedorUpdateDTO
+from ..services.produtoFornecedorService import get_produto_service
 from ..auth.jwt import get_current_user, require_role
 from ..dtos.userDTO import User
 
-router = APIRouter(tags=["produtos"], prefix="/produtos")
+router = APIRouter(tags=["Produtos de Fornecedor"], prefix="/produtos-fornecedor")
 
 
 @router.post("/fornecedor/{fornecedor_id}", response_model=ProdutoDTO)
 def criar_produto(
     fornecedor_id: int,
-    produto: ProdutoCreateDTO,
+    produto: ProdutoFornecedorCreateDTO,
     user: User = Depends(require_role("PRODUTOR"))
 ):
     """Adiciona um produto a um fornecedor existente"""
@@ -34,7 +34,7 @@ def obter_produto(produto_id: int, user: User = Depends(get_current_user)):
 @router.put("/{produto_id}", response_model=ProdutoDTO)
 def atualizar_produto(
     produto_id: int,
-    produto: ProdutoUpdateDTO,
+    produto: ProdutoFornecedorUpdateDTO,
     user: User = Depends(require_role("PRODUTOR"))
 ):
     """Atualiza informações de um produto"""

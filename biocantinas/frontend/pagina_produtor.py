@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 from datetime import date, timedelta
@@ -11,6 +12,15 @@ def create_fornecedor(API_URL, auth_token, payload):
 
 def pagina_produtor(API_URL, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
+    
+    # Carregar catálogo de produtos
+    try:
+        cat_resp = requests.get(f"{API_URL}/produtos-catalogo/")
+        cat_resp.raise_for_status()
+        catalogo = cat_resp.json()
+    except Exception:
+        catalogo = []
+    catalogo_por_id = {p.get("id"): p for p in catalogo}
     
     # Obter informações do fornecedor para o título
     try:
@@ -46,68 +56,73 @@ def pagina_produtor(API_URL, auth_token):
                 perfil = perfil_response.json()
                 
                 # Mostrar nome, status e data de inscrição
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4, col5 = st.columns(5)
                 with col1:
                     st.metric("Nome Registado", perfil.get("nome", "N/A"))
                 with col2:
-                    st.metric("Status", "✅ Aprovado" if perfil.get("aprovado") else "⏳ Pendente")
+                    # Determinar status correto: se não é local, é reprovado
+                    if not perfil.get("local", False):
+                        status_text = "❌ Reprovado (Não Local)"
+                    elif perfil.get("aprovado"):
+                        status_text = "✅ Aprovado"
+                    else:
+                        status_text = "⏳ Pendente"
+                    st.metric("Status", status_text)
                 with col3:
                     data_inscricao = perfil.get("data_inscricao", "N/A")
                     st.metric("Data de Inscrição", data_inscricao)
+                with col4:
+                    local_status = "✅ Sim" if perfil.get("local", False) else "❌ Não"
+                    st.metric("Produtor Local", local_status)
+                with col5:
+                    cert_status = "✅ Sim" if perfil.get("certificado", False) else "❌ Não"
+                    st.metric("Certificado Agrícola", cert_status)
                 
                 st.divider()
+                
+                # Mostrar aviso se não é local
+                if not perfil.get("local", False):
+                    st.error("❌ **Atenção:** Apenas produtores locais podem ser aprovados.")
                 
                 produtos = perfil.get("produtos", [])
                 
                 if produtos:
-                    # Resumo estatístico primeiro
-                    st.markdown("### 📊 Resumo")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric("Total de Produtos", len(produtos))
-                    with col2:
-                        capacidade_total = sum(p.get("capacidade", 0) for p in produtos)
-                        st.metric("Capacidade Total", f"{capacidade_total} kg")
-                    with col3:
-                        # Calcular produtos com prioridade 1
-                        try:
-                            ordem_response = requests.get(
-                                f"{API_URL}/fornecedores/ordem",
-                                headers=headers
-                            )
-                            ordem_data = ordem_response.json() if ordem_response.status_code == 200 else []
-                        except:
-                            ordem_data = []
-                        
-                        produtos_prioridade_1 = 0
-                        for produto in produtos:
-                            for ordem_item in ordem_data:
-                                if ordem_item["produto"].lower() == produto["nome"].lower():
-                                    fornecedores_ids = ordem_item.get("fornecedores_ids", [])
-                                    if perfil["id"] in fornecedores_ids and fornecedores_ids.index(perfil["id"]) == 0:
-                                        produtos_prioridade_1 += 1
-                                    break
-                        st.metric("Produtos com Prioridade 1", produtos_prioridade_1)
-                    
-                    st.divider()
-                    
                     # Tabela de produtos
                     st.markdown("### 🌱 Produtos Cadastrados")
+                    
+                    # Calcular prioridades
+                    try:
+                        ordem_response = requests.get(
+                            f"{API_URL}/fornecedores/ordem",
+                            headers=headers
+                        )
+                        ordem_data = ordem_response.json() if ordem_response.status_code == 200 else []
+                    except:
+                        ordem_data = []
+                    
                     produtos_info = []
                     for produto in produtos:
                         # Encontrar prioridade
                         prioridade = None
+                        nome_cat = catalogo_por_id.get(produto.get("produto_id"), {}).get("nome", "")
+                        tipo_cat = catalogo_por_id.get(produto.get("produto_id"), {}).get("tipo", "N/A")
+                        unidade_medida = catalogo_por_id.get(produto.get("produto_id"), {}).get("unidade_medida", "kg")
+                        
                         for ordem_item in ordem_data:
-                            if ordem_item["produto"].lower() == produto["nome"].lower():
+                            if ordem_item["produto"].lower() == nome_cat.lower():
                                 fornecedores_ids = ordem_item.get("fornecedores_ids", [])
                                 if perfil["id"] in fornecedores_ids:
                                     prioridade = fornecedores_ids.index(perfil["id"]) + 1
                                 break
                         
+                        # Formatar capacidade com unidade de medida
+                        capacidade = produto.get("capacidade", 0)
+                        capacidade_texto = f"{capacidade} {unidade_medida}" if unidade_medida else str(capacidade)
+                        
                         produtos_info.append({
-                            "Produto": produto.get("nome", ""),
-                            "Tipo": produto.get("tipo", "N/A"),
-                            "Capacidade (kg)": produto.get("capacidade", 0),
+                            "Produto": nome_cat,
+                            "Tipo": tipo_cat,
+                            "Capacidade": capacidade_texto,
                             "Início Produção": produto.get("intervalo_producao_inicio", "N/A"),
                             "Fim Produção": produto.get("intervalo_producao_fim", "N/A"),
                             "Prioridade": prioridade if prioridade else "N/A"
@@ -137,7 +152,7 @@ def pagina_produtor(API_URL, auth_token):
                 st.warning("⚠️ Perfil de produtor não encontrado. Cadastre-se primeiro na aba 'Registro de Produtos'.")
             else:
                 perfil = perfil_response.json()
-                meus_produtos = [p["nome"].lower() for p in perfil.get("produtos", [])]
+                meus_produtos = [catalogo_por_id.get(p.get("produto_id"), {}).get("nome", "").lower() for p in perfil.get("produtos", [])]
                 
                 if not meus_produtos:
                     st.info("ℹ️ Você ainda não cadastrou produtos. Vá para a aba 'Registro de Produtos' para cadastrar.")
@@ -156,20 +171,24 @@ def pagina_produtor(API_URL, auth_token):
                     prioridade_map = {}
                     capacidade_map = {}
                     for p in perfil.get("produtos", []):
-                        produto_nome = p["nome"].lower()
-                        prioridade_map[produto_nome] = None
-                        capacidade_map[produto_nome] = p.get("capacidade", 0)
+                        pid = p.get("produto_id")
+                        nome_prod = catalogo_por_id.get(pid, {}).get("nome", "").lower()
+                        prioridade_map[nome_prod] = None
+                        capacidade_map[nome_prod] = p.get("capacidade", 0)
                         
                         # Encontrar posição na ordem de prioridade
                         for ordem_item in ordem_data:
-                            if ordem_item["produto"].lower() == produto_nome:
+                            if ordem_item["produto"].lower() == nome_prod:
                                 fornecedores_ids = ordem_item.get("fornecedores_ids", [])
                                 if perfil["id"] in fornecedores_ids:
-                                    prioridade_map[produto_nome] = fornecedores_ids.index(perfil["id"]) + 1
+                                    prioridade_map[nome_prod] = fornecedores_ids.index(perfil["id"]) + 1
                                 break
                     
                     st.subheader("🔍 Previsão de Fornecimento dos Meus Produtos")
-                    st.write(f"Produtos cadastrados: {', '.join([p['nome'] for p in perfil.get('produtos', [])])}")
+                    # Construir lista de nomes dos meus produtos
+                    meus_nomes = [catalogo_por_id.get(p.get('produto_id'), {}).get('nome', '') 
+                                  for p in perfil.get('produtos', [])]
+                    st.write(f"Produtos cadastrados: {', '.join(meus_nomes)}")
                     
                     # Seleção de semana do ano
                     import datetime
@@ -244,7 +263,15 @@ def pagina_produtor(API_URL, auth_token):
                                 
                                 for produto, quantidade_total in necessidades.items():
                                     produto_lower = produto.lower()
-                                    if produto_lower in meus_produtos:
+                                    # Verificar se este produto está em meus produtos (comparando nomes do catálogo)
+                                    if produto_lower in [n.lower() for n in meus_nomes]:
+                                        # Encontrar qual é meu produto_id para este nome
+                                        meu_pid = None
+                                        for p in perfil.get('produtos', []):
+                                            if catalogo_por_id.get(p.get('produto_id'), {}).get('nome', '').lower() == produto_lower:
+                                                meu_pid = p.get('produto_id')
+                                                break
+                                        
                                         # Obter ordem de prioridade para este produto
                                         ordem_produto = None
                                         for ordem_item in ordem_data:
@@ -267,7 +294,8 @@ def pagina_produtor(API_URL, auth_token):
                                                 fornecedor = fornecedores_map.get(forn_id)
                                                 if fornecedor:
                                                     for p in fornecedor.get("produtos", []):
-                                                        if p["nome"].lower() == produto_lower:
+                                                        p_nome = catalogo_por_id.get(p.get("produto_id"), {}).get("nome", "").lower()
+                                                        if p_nome == produto_lower:
                                                             capacidade_forn = p.get("capacidade", 0)
                                                             
                                                             # Se for o fornecedor atual (eu)
@@ -283,8 +311,21 @@ def pagina_produtor(API_URL, auth_token):
                                             
                                             # Só mostrar se houver quantidade para mim
                                             if quantidade_para_mim > 0:
-                                                prioridade = prioridade_map.get(produto_lower)
-                                                capacidade = capacidade_map.get(produto_lower, 0)
+                                                # Encontrar prioridade e capacidade
+                                                prioridade = None
+                                                capacidade = 0
+                                                for p in perfil.get('produtos', []):
+                                                    if p.get('produto_id') == meu_pid:
+                                                        capacidade = p.get('capacidade', 0)
+                                                        # Encontrar posição na ordem de prioridade
+                                                        for ordem_item in ordem_data:
+                                                            if ordem_item["produto"].lower() == produto_lower:
+                                                                fornecedores_ids = ordem_item.get("fornecedores_ids", [])
+                                                                if perfil["id"] in fornecedores_ids:
+                                                                    prioridade = fornecedores_ids.index(perfil["id"]) + 1
+                                                                break
+                                                        break
+                                                
                                                 necessidades_filtradas.append({
                                                     "Produto": produto,
                                                     "Quantidade Total Necessária (kg)": quantidade_total,
@@ -341,9 +382,17 @@ def pagina_produtor(API_URL, auth_token):
                 nome = perfil.get("nome", "N/A")
                 data_inscricao_str = perfil.get("data_inscricao", "N/A")
                 
+                # Obter produtos já registados
+                produtos_registados = perfil.get("produtos", [])
+                produtos_registados_ids = {p.get("produto_id") for p in produtos_registados}
+                
                 # Mostrar dados não editáveis
                 st.metric("Nome do Produtor", nome)
                 st.metric("Data de Inscrição", data_inscricao_str)
+                
+                # Mostrar produtos já registados
+                if produtos_registados:
+                    st.info(f"ℹ️ Você já tem {len(produtos_registados)} produto(s) registado(s). Não pode registar o mesmo produto duas vezes.")
                 
                 # Converter string para objeto date
                 try:
@@ -354,107 +403,64 @@ def pagina_produtor(API_URL, auth_token):
                 st.error("❌ Erro ao carregar perfil do produtor.")
                 nome = "Erro"
                 data_inscricao = date.today()
+                produtos_registados_ids = set()
         except Exception as e:
             st.error(f"❌ Erro ao conectar com API: {str(e)}")
             nome = "Erro"
             data_inscricao = date.today()
+            produtos_registados_ids = set()
 
         st.subheader("Produtos")
 
-        # Lista fixa de produtos com seus tipos (mesma do formulário de registro)
-        PRODUTOS_DISPONIVEIS = {
-            "Frutas": {
-                "Maçã": "Fruta",
-                "Pera": "Fruta",
-                "Laranja": "Fruta",
-                "Banana": "Fruta",
-                "Morango": "Fruta",
-                "Uva": "Fruta",
-                "Pêssego": "Fruta",
-                "Ameixa": "Fruta",
-                "Melancia": "Fruta",
-                "Melão": "Fruta"
-            },
-            "Hortícolas": {
-                "Tomate": "Hortícola",
-                "Alface": "Hortícola",
-                "Cenoura": "Hortícola",
-                "Batata": "Hortícola",
-                "Cebola": "Hortícola",
-                "Couve": "Hortícola",
-                "Brócolos": "Hortícola",
-                "Pimento": "Hortícola",
-                "Beringela": "Hortícola",
-                "Abóbora": "Hortícola",
-                "Feijão-verde": "Hortícola",
-                "Espinafre": "Hortícola"
-            },
-            "Proteínas": {
-                "Frango": "Proteína",
-                "Carne de Vaca": "Proteína",
-                "Carne de Porco": "Proteína",
-                "Peixe": "Proteína",
-                "Ovos": "Proteína",
-                "Tofu": "Proteína",
-                "Grão-de-bico": "Proteína",
-                "Lentilhas": "Proteína"
-            },
-            "Cereais": {
-                "Arroz": "Cereais",
-                "Massa": "Cereais",
-                "Pão": "Cereais",
-                "Aveia": "Cereais",
-                "Quinoa": "Cereais",
-                "Milho": "Cereais"
-            },
-            "Laticínios": {
-                "Leite": "Laticínios",
-                "Queijo": "Laticínios",
-                "Iogurte": "Laticínios",
-                "Manteiga": "Laticínios",
-                "Nata": "Laticínios"
-            },
-            "Outros": {
-                "Azeite": "Outro",
-                "Mel": "Outro",
-                "Ervas Aromáticas": "Outro",
-                "Especiarias": "Outro"
-            }
-        }
+        # Buscar catálogo de produtos do backend
+        try:
+            cat_resp = requests.get(f"{API_URL}/produtos-catalogo/")
+            cat_resp.raise_for_status()
+            catalogo_novo = cat_resp.json()
+        except Exception as e:
+            st.error(f"Erro ao carregar catálogo: {str(e)}")
+            catalogo_novo = []
 
-        # Criar lista plana de produtos
-        todos_produtos = []
-        for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
-            todos_produtos.extend(produtos.keys())
-
-        prod_nome = st.selectbox("Produto", options=[""] + todos_produtos)
+        # Mapa id->produto e lista (nome, id) ordenada, excluindo produtos já registados
+        catalogo_por_id_novo = {p["id"]: p for p in catalogo_novo}
+        nomes_e_ids_novo = [(p.get("nome", ""), p["id"]) for p in catalogo_novo if p["id"] not in produtos_registados_ids]
+        nomes_e_ids_novo.sort(key=lambda x: x[0].lower())
+        nomes_display_novo = [nome for nome, _ in nomes_e_ids_novo]
         
-        # Determinar automaticamente o tipo baseado no produto selecionado
-        tipo_produto = None
-        if prod_nome:
-            for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
-                if prod_nome in produtos:
-                    tipo_produto = produtos[prod_nome]
-                    break
-        
-        if tipo_produto:
-            st.info(f"📦 Tipo: **{tipo_produto}**")
-        
-        biologico = st.checkbox("Produto Biológico", value=True)
+        if not nomes_display_novo:
+            st.warning("⚠️ Não há mais produtos disponíveis para registo. Você já registou todos os produtos que oferece.")
+        else:
+            opcoes_novo = [""] + nomes_display_novo
+            prod_nome = st.selectbox("Produto", options=opcoes_novo)
+            
+            # Obter produto_id selecionado
+            produto_id = None
+            if prod_nome:
+                for n, pid in nomes_e_ids_novo:
+                    if n == prod_nome:
+                        produto_id = pid
+                        break
+            
+            # Mostrar tipo do catálogo
+            if produto_id and produto_id in catalogo_por_id_novo:
+                tipo_produto = catalogo_por_id_novo[produto_id].get("tipo")
+                if tipo_produto:
+                    st.info(f"📦 Tipo: **{tipo_produto}**")
+            
+            biologico = st.checkbox("Produto Biológico", value=True)
 
-        prod_ini = st.date_input("Início intervalo produção", value=date.today())
-        prod_fim = st.date_input("Fim intervalo produção", value=date.today())
-        capacidade = st.number_input("Capacidade (Kg)", min_value=0, value=0)
+            prod_ini = st.date_input("Início intervalo produção", value=date.today())
+            prod_fim = st.date_input("Fim intervalo produção", value=date.today())
+            capacidade = st.number_input("Capacidade (Kg)", min_value=0, value=0)
 
-        if st.button("Submeter inscrição"):
-            if prod_nome and tipo_produto:
-                payload = {
-                    "nome": nome,
-                    "data_inscricao": str(data_inscricao),
-                    "produtos": [
-                        {
-                            "nome": prod_nome,
-                            "tipo": tipo_produto,
+            if st.button("Submeter inscrição"):
+                if produto_id:
+                    payload = {
+                        "nome": nome,
+                        "data_inscricao": str(data_inscricao),
+                        "produtos": [
+                            {
+                                "produto_id": produto_id,
                             "biologico": biologico,
                             "intervalo_producao_inicio": str(prod_ini),
                             "intervalo_producao_fim": str(prod_fim),
@@ -468,4 +474,4 @@ def pagina_produtor(API_URL, auth_token):
                 except Exception as e:
                     st.error(f"❌ Erro ao criar produtor: {str(e)}")
             else:
-                st.error("Selecione um produto válido!")
+                st.error("Selecione um produto válido do catálogo!")

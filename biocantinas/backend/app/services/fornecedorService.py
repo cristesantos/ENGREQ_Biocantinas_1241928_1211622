@@ -35,9 +35,32 @@ class Services:
 
     # CRUD + business
     def criar_fornecedor(self, data: FornecedorCreateDTO, usuario_id: int) -> FornecedorDTO:
+        # Verificar se o usuário já tem um fornecedor registado
+        fornecedores_existentes = self.repo.listar_fornecedores()
+        fornecedor_existente = None
+        for f in fornecedores_existentes:
+            if f.usuario_id == usuario_id:
+                fornecedor_existente = f
+                break
+        
+        # Se já existe fornecedor para este usuário, verificar produtos duplicados
+        if fornecedor_existente:
+            produtos_existentes_ids = {p.produto_id for p in fornecedor_existente.produtos}
+            produtos_novos_ids = {p.produto_id for p in data.produtos}
+            
+            # Verificar se há duplicados
+            duplicados = produtos_existentes_ids & produtos_novos_ids
+            if duplicados:
+                raise ValueError(f"Produto(s) já registado(s) por este fornecedor: {duplicados}")
+        
         # ID é atribuído pelo autoincrement da BD
         model = dto_to_model_create(data, new_id=0)
         model.usuario_id = usuario_id  # Vincular ao usuário
+        
+        # Reprovar automaticamente se não for produtor local
+        if not model.local:
+            model.aprovado = False
+        
         stored = self.repo.criar_fornecedor(model)
         return model_to_dto(stored)
 
@@ -68,28 +91,70 @@ class Services:
         fornecedor = self.repo.obter_fornecedor(fid)
         if not fornecedor:
             raise ValueError("Fornecedor não encontrado")
+        
+        # Regra: Apenas produtores locais podem ser aprovados
+        if aprovado and not fornecedor.local:
+            raise ValueError("Apenas produtores locais podem ser aprovados")
+        
         fornecedor.aprovado = aprovado
         self.repo.atualizar_fornecedor(fornecedor)
         return model_to_dto(fornecedor)
 
     def calcular_ordem_por_produto(self) -> List[OrdemFornecedor]:
-        fornecedores = [f for f in self.repo.listar_fornecedores() if f.aprovado]
-        mapa: Dict[str, List[FornecedorModel]] = {}
+        # Apenas produtores aprovados E locais
+        fornecedores = [f for f in self.repo.listar_fornecedores() if f.aprovado and f.local]
+        
+        # Mapa: nome_produto -> lista de tuplas (fornecedor, produto)
+        mapa: Dict[str, List[tuple]] = {}
 
         for f in fornecedores:
             for p in f.produtos:
-                mapa.setdefault(p.nome, []).append(f)
+                mapa.setdefault(p.produto_nome, []).append((f, p))
 
         ordens: List[OrdemFornecedor] = []
-        for nome_produto, lista in mapa.items():
-            lista_ordenada = sorted(lista, key=lambda f: f.data_inscricao)
+        for nome_produto, lista_tuplas in mapa.items():
+            # Ordenar por:
+            # 1. Local (sempre True aqui, já filtrado)
+            # 2. Certificado (True primeiro)
+            # 3. Biológico com prioridade especial:
+            #    - Certificado + Biológico = 0 (mais alta)
+            #    - Certificado + Não Biológico = 1
+            #    - Não Certificado + Não Biológico = 2
+            #    - Não Certificado + Biológico = 3 (mais baixa)
+            # 4. Data de inscrição (mais antigo primeiro)
+            lista_ordenada = sorted(
+                lista_tuplas,
+                key=lambda item: (
+                    0 if item[0].certificado else 1,  # certificados primeiro
+                    self._calcular_prioridade_biologico(item[0].certificado, item[1].biologico),
+                    item[0].data_inscricao
+                )
+            )
             ordens.append(
                 OrdemFornecedor(
                     produto=nome_produto,
-                    fornecedores_ids=[f.id for f in lista_ordenada]
+                    fornecedores_ids=[f.id for f, p in lista_ordenada]
                 )
             )
         return ordens
+    
+    def _calcular_prioridade_biologico(self, certificado: bool, biologico: bool) -> int:
+        """Calcula prioridade baseada em certificação e se produto é biológico.
+        
+        Prioridade (menor = melhor):
+        0: Certificado + Biológico
+        1: Certificado + Não Biológico  
+        2: Não Certificado + Não Biológico
+        3: Não Certificado + Biológico
+        """
+        if certificado and biologico:
+            return 0
+        elif certificado and not biologico:
+            return 1
+        elif not certificado and not biologico:
+            return 2
+        else:  # not certificado and biologico
+            return 3
 
 _services = Services()
 

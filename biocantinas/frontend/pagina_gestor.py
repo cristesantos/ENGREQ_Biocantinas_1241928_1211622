@@ -50,6 +50,15 @@ def get_kpi_consolidado(API_URL, auth_token, ementa_id):
 def pagina_gestor(API_URL, auth_token):
     st.header("Gestão de Fornecedores")
 
+    # Carregar catálogo para mapear produto_id -> nome/tipo
+    try:
+        cat_resp = requests.get(f"{API_URL}/produtos-catalogo/")
+        cat_resp.raise_for_status()
+        catalogo = cat_resp.json()
+    except Exception:
+        catalogo = []
+    catalogo_por_id = {p.get("id"): p for p in catalogo}
+
     # Criar abas
     tab1, tab2, tab3 = st.tabs(["Fornecedores", "Ordem de Fornecimento", "KPIs - Sustentabilidade"])
     
@@ -59,16 +68,24 @@ def pagina_gestor(API_URL, auth_token):
             st.rerun()
 
         fornecedores = list_fornecedores(API_URL, auth_token)
+        
         if fornecedores:
-            st.subheader("Lista de Fornecedores")
-            for f in fornecedores:
+            # Separar fornecedores por status
+            aprovados = [f for f in fornecedores if f.get('aprovado')]
+            pendentes = [f for f in fornecedores if not f.get('aprovado') and f.get('local', False)]
+            reprovados = [f for f in fornecedores if not f.get('aprovado') and not f.get('local', False)]
+            
+            # Função auxiliar para exibir fornecedor
+            def exibir_fornecedor(f, status_tab):
                 col1, col2, col3 = st.columns([5, 1, 1])
                 
                 with col1:
                     with st.expander(f"#{f['id']} - {f['nome']}"):
+                        local_badge = "🏡 Local" if f.get('local', False) else "❌ Não Local"
+                        cert_badge = "✅ Certificado" if f.get('certificado', False) else "❌ Não Certificado"
                         st.caption(
                             f"Data inscrição: {f['data_inscricao']} | "
-                            f"Aprovado: {f['aprovado']}"
+                            f"{local_badge} | {cert_badge}"
                         )
                         
                         # Listar produtos
@@ -76,21 +93,64 @@ def pagina_gestor(API_URL, auth_token):
                         if produtos:
                             st.write("**Produtos:**")
                             for p in produtos:
-                                st.write(f"  • {p['nome']} ({p.get('tipo', 'N/A')}) - Capacidade: {p.get('capacidade', 'N/A')} unidades")
+                                pid = p.get('produto_id')
+                                prod_cat = catalogo_por_id.get(pid, {})
+                                nome = prod_cat.get('nome', f"ID {pid}")
+                                tipo = prod_cat.get('tipo', 'N/A')
+                                st.write(f"  • {nome} ({tipo}) - Capacidade: {p.get('capacidade', 'N/A')} unidades")
                         else:
                             st.write("Sem produtos cadastrados")
                 
                 with col2:
-                    if not f["aprovado"]:
+                    if status_tab == "pendentes":
                         if st.button("Aprovar", key=f"ap_{f['id']}"):
-                            patch_aprovacao(API_URL, auth_token, f["id"], True)
-                            st.rerun()
+                            try:
+                                patch_aprovacao(API_URL, auth_token, f["id"], True)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao aprovar: {str(e)}")
                 
                 with col3:
-                    if f["aprovado"]:
+                    if status_tab == "aprovados":
                         if st.button("Reprovar", key=f"rp_{f['id']}"):
-                            patch_aprovacao(API_URL, auth_token, f["id"], False)
-                            st.rerun()
+                            try:
+                                patch_aprovacao(API_URL, auth_token, f["id"], False)
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Erro ao reprovar: {str(e)}")
+                    elif status_tab == "reprovados" and not f.get('local', False):
+                        st.warning("⚠️ Não local - Não pode ser aprovado")
+            
+            # Abas para os diferentes status
+            status_tab1, status_tab2, status_tab3 = st.tabs([
+                f"✅ Aprovados ({len(aprovados)})",
+                f"⏳ Pendentes ({len(pendentes)})",
+                f"❌ Reprovados ({len(reprovados)})"
+            ])
+            
+            with status_tab1:
+                if aprovados:
+                    st.subheader("Fornecedores Aprovados")
+                    for f in aprovados:
+                        exibir_fornecedor(f, "aprovados")
+                else:
+                    st.info("Nenhum fornecedor aprovado.")
+            
+            with status_tab2:
+                if pendentes:
+                    st.subheader("Fornecedores Pendentes")
+                    for f in pendentes:
+                        exibir_fornecedor(f, "pendentes")
+                else:
+                    st.info("Nenhum fornecedor pendente.")
+            
+            with status_tab3:
+                if reprovados:
+                    st.subheader("Fornecedores Reprovados")
+                    for f in reprovados:
+                        exibir_fornecedor(f, "reprovados")
+                else:
+                    st.info("Nenhum fornecedor reprovado.")
         else:
             st.info("Ainda não há fornecedores.")
     
@@ -115,12 +175,20 @@ def pagina_gestor(API_URL, auth_token):
                             forn = id_to_fornecedor.get(fid)
                             if forn:
                                 capacidade = None
+                                biologico = False
                                 for p in forn.get('produtos', []):
-                                    if p.get('nome', '').lower() == o['produto'].lower():
+                                    pid = p.get('produto_id')
+                                    nome_prod = catalogo_por_id.get(pid, {}).get('nome', '').lower()
+                                    if nome_prod == o['produto'].lower():
                                         capacidade = p.get('capacidade')
+                                        biologico = p.get('biologico', False)
                                         break
                                 cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
-                                st.write(f"{idx}. {forn['nome']} — {cap_text}")
+                                local_icon = "🏡" if forn.get('local', False) else "❌"
+                                cert_icon = "✅" if forn.get('certificado', False) else "❌"
+                                bio_icon = "🌱" if biologico else "❌"
+                                data_inscricao = forn.get('data_inscricao', 'N/A')
+                                st.write(f"{idx}. **{forn['nome']}** — {cap_text} | Local: {local_icon} | Certificado: {cert_icon} | Biológico: {bio_icon} | Data Inscrição: {data_inscricao}")
                             else:
                                 st.write(f"{idx}. {fid} — fornecedor não encontrado")
             else:

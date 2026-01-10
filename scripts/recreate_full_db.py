@@ -10,7 +10,7 @@ import os
 from datetime import date, timedelta
 from biocantinas.backend.app.db.session import SessionLocal, engine, init_db
 from biocantinas.backend.app.db.models import (
-    Base, UserORM, FornecedorORM, ProdutoFornecedorORM, 
+    Base, UserORM, FornecedorORM, ProdutoFornecedorORM, ProdutoORM,
     EmentaORM, RefeicaoORM, ItemRefeicaoORM, ReservaRefeicaoORM,
     HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM, ExecucaoRefeicaoORM
 )
@@ -146,7 +146,65 @@ def create_users(session):
     # Return users for linking with suppliers
     return {user.username: user.id for user in users}
 
-def create_fornecedores(session, user_ids):
+
+def create_produtos_catalogo(session):
+    """Criar catálogo global de produtos"""
+    print("\n📋 Criando catálogo global de produtos...")
+    
+    produtos = [
+        # Frutas
+        {"nome": "Maçã", "tipo": "Fruta", "descricao": "Maçã fresca", "unidade_medida": "kg", "epoca_tipica": "Outono", "ativo": True},
+        {"nome": "Pera", "tipo": "Fruta", "descricao": "Pera fresca", "unidade_medida": "kg", "epoca_tipica": "Outono", "ativo": True},
+        {"nome": "Laranja", "tipo": "Fruta", "descricao": "Laranja fresca", "unidade_medida": "kg", "epoca_tipica": "Inverno", "ativo": True},
+        {"nome": "Banana", "tipo": "Fruta", "descricao": "Banana fresca", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        
+        # Hortícolas
+        {"nome": "Tomate", "tipo": "Hortícola", "descricao": "Tomate fresco", "unidade_medida": "kg", "epoca_tipica": "Verão", "ativo": True},
+        {"nome": "Alface", "tipo": "Hortícola", "descricao": "Alface fresca", "unidade_medida": "unidade", "epoca_tipica": "Primavera", "ativo": True},
+        {"nome": "Cenoura", "tipo": "Hortícola", "descricao": "Cenoura fresca", "unidade_medida": "kg", "epoca_tipica": "Outono", "ativo": True},
+        {"nome": "Couve", "tipo": "Hortícola", "descricao": "Couve fresca", "unidade_medida": "kg", "epoca_tipica": "Inverno", "ativo": True},
+        {"nome": "Batata", "tipo": "Hortícola", "descricao": "Batata fresca", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Espinafre", "tipo": "Hortícola", "descricao": "Espinafre fresco", "unidade_medida": "kg", "epoca_tipica": "Inverno", "ativo": True},
+        {"nome": "Beterraba", "tipo": "Hortícola", "descricao": "Beterraba fresca", "unidade_medida": "kg", "epoca_tipica": "Outono", "ativo": True},
+        {"nome": "Pimento", "tipo": "Hortícola", "descricao": "Pimento fresco", "unidade_medida": "kg", "epoca_tipica": "Verão", "ativo": True},
+        {"nome": "Batata Doce", "tipo": "Hortícola", "descricao": "Batata doce", "unidade_medida": "kg", "epoca_tipica": "Outono", "ativo": True},
+        {"nome": "Curgete", "tipo": "Hortícola", "descricao": "Curgete fresca", "unidade_medida": "kg", "epoca_tipica": "Verão", "ativo": True},
+        
+        # Proteínas
+        {"nome": "Frango", "tipo": "Proteína", "descricao": "Carne de frango", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Carne de Vaca", "tipo": "Proteína", "descricao": "Carne de vaca", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Ovos", "tipo": "Proteína", "descricao": "Ovos frescos", "unidade_medida": "unidade", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Peixe", "tipo": "Proteína", "descricao": "Peixe fresco", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Salmão", "tipo": "Proteína", "descricao": "Salmão fresco", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Pescada", "tipo": "Proteína", "descricao": "Pescada fresca", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Bacalhau", "tipo": "Proteína", "descricao": "Bacalhau", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Peru", "tipo": "Proteína", "descricao": "Carne de peru", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        
+        # Cereais
+        {"nome": "Arroz", "tipo": "Cereais", "descricao": "Arroz", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Massa", "tipo": "Cereais", "descricao": "Massa alimentícia", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Pão", "tipo": "Cereais", "descricao": "Pão fresco", "unidade_medida": "unidade", "epoca_tipica": "Todo o ano", "ativo": True},
+        
+        # Laticínios
+        {"nome": "Leite", "tipo": "Laticínios", "descricao": "Leite fresco", "unidade_medida": "litro", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Queijo", "tipo": "Laticínios", "descricao": "Queijo", "unidade_medida": "kg", "epoca_tipica": "Todo o ano", "ativo": True},
+        {"nome": "Iogurte", "tipo": "Laticínios", "descricao": "Iogurte", "unidade_medida": "unidade", "epoca_tipica": "Todo o ano", "ativo": True},
+    ]
+    
+    produtos_orm = []
+    for p in produtos:
+        produto_orm = ProdutoORM(**p)
+        session.add(produto_orm)
+        produtos_orm.append(produto_orm)
+    
+    session.flush()
+    print(f"✅ {len(produtos_orm)} produtos criados no catálogo")
+    
+    # Retornar dicionário nome -> id para facilitar criação de produtos de fornecedores
+    return {p.nome: p.id for p in produtos_orm}
+
+
+def create_fornecedores(session, user_ids, produtos_ids):
     """Criar fornecedores e seus produtos"""
     print("\n🚜 Criando fornecedores...")
     
@@ -253,38 +311,47 @@ def create_fornecedores(session, user_ids):
             ]
         },
         # Sofia - Hortícolas adicionais (batata doce, curgete) e Peru
+        # LOCAL + NÃO CERTIFICADO + NÃO BIOLÓGICO (prioridade 3)
         {
             "nome": "Sofia Costa Quinta",
             "usuario_id": user_ids["sofia"],
             "data_inscricao": today - timedelta(days=18),
             "aprovado": True,
+            "local": True,
+            "certificado": False,
             "produtos": [
-                {"nome": "Batata Doce", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": True},
-                {"nome": "Curgete", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=35), "capacidade": 70, "biologico": True},
-                {"nome": "Peru", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 120, "biologico": True},
+                {"nome": "Batata Doce", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": False},
+                {"nome": "Curgete", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=35), "capacidade": 70, "biologico": False},
+                {"nome": "Peru", "tipo": "Proteína", "inicio": today, "fim": today + timedelta(days=365), "capacidade": 120, "biologico": False},
             ]
         },
         # Bruno - Batata (segundo fornecedor de batata com menor prioridade)
+        # LOCAL + NÃO CERTIFICADO + BIOLÓGICO (prioridade mais baixa entre locais)
         {
             "nome": "Bruno Ferreira Tubérculos",
             "usuario_id": user_ids["bruno"],
             "data_inscricao": today - timedelta(days=5),
             "aprovado": True,
+            "local": True,
+            "certificado": False,
             "produtos": [
                 {"nome": "Batata", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=150), "capacidade": 200, "biologico": True},
                 {"nome": "Cenoura", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=120), "capacidade": 100, "biologico": True},
             ]
         },
         # Carla - Tomate e Alface (produtos repetidos para testar prioridades)
+        # LOCAL + CERTIFICADO + NÃO BIOLÓGICO (prioridade 2)
         {
             "nome": "Carla Mendes Horta",
             "usuario_id": user_ids["carla"],
             "data_inscricao": today - timedelta(days=22),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
             "produtos": [
-                {"nome": "Tomate", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 80, "biologico": True},
-                {"nome": "Alface", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 50, "biologico": True},
-                {"nome": "Couve", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 60, "biologico": True},
+                {"nome": "Tomate", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=40), "capacidade": 80, "biologico": False},
+                {"nome": "Alface", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=20), "capacidade": 50, "biologico": False},
+                {"nome": "Couve", "tipo": "Hortícola", "inicio": today, "fim": today + timedelta(days=30), "capacidade": 60, "biologico": False},
             ]
         },
     ]
@@ -294,22 +361,36 @@ def create_fornecedores(session, user_ids):
             nome=data["nome"],
             usuario_id=data["usuario_id"],
             data_inscricao=data["data_inscricao"],
-            aprovado=data["aprovado"]
+            aprovado=data["aprovado"],
+            local=data.get("local", True),
+            certificado=data.get("certificado", True),
         )
         session.add(fornecedor)
         session.flush()
         
         for p in data["produtos"]:
-            produto = ProdutoFornecedorORM(
+            # Buscar ID do produto no catálogo
+            produto_id = produtos_ids.get(p['nome'])
+            if not produto_id:
+                print(f"⚠️  Produto '{p['nome']}' não encontrado no catálogo, pulando...")
+                continue
+            
+            # Determinar prioridade baseado em data de inscrição (mais antigo = maior prioridade)
+            prioridade = 1  # padrão
+            
+            produto_fornecedor = ProdutoFornecedorORM(
                 fornecedor_id=fornecedor.id,
-                nome=p['nome'],
-                tipo=p['tipo'],
-                biologico=p['biologico'],
+                produto_id=produto_id,
+                preco_unitario=None,  # Pode ser definido depois
+                capacidade=p['capacidade'],
+                unidade_medida=None,  # Herdado do catálogo
                 intervalo_producao_inicio=p['inicio'],
                 intervalo_producao_fim=p['fim'],
-                capacidade=p['capacidade']
+                prioridade=prioridade,
+                biologico=p['biologico'],
+                disponivel=True
             )
-            session.add(produto)
+            session.add(produto_fornecedor)
     
     session.commit()
     print(f"✅ {len(fornecedores_data)} fornecedores criados")
@@ -835,7 +916,8 @@ def main():
     
     try:
         user_ids = create_users(session)
-        create_fornecedores(session, user_ids)
+        produtos_ids = create_produtos_catalogo(session)
+        create_fornecedores(session, user_ids, produtos_ids)
         create_ementas(session)
         create_reservas(session)
         create_historico(session)
@@ -846,8 +928,9 @@ def main():
         print("=" * 70)
         print("\n📊 Resumo:")
         print(f"  - Usuários: {session.query(UserORM).count()}")
+        print(f"  - Produtos (Catálogo): {session.query(ProdutoORM).count()}")
         print(f"  - Fornecedores: {session.query(FornecedorORM).count()}")
-        print(f"  - Produtos: {session.query(ProdutoFornecedorORM).count()}")
+        print(f"  - Produtos de Fornecedores: {session.query(ProdutoFornecedorORM).count()}")
         print(f"  - Ementas: {session.query(EmentaORM).count()}")
         print(f"  - Refeições: {session.query(RefeicaoORM).count()}")
         print(f"  - Reservas: {session.query(ReservaRefeicaoORM).count()}")
@@ -862,16 +945,6 @@ def main():
         print("  - Aluno 2: aluno2 / aluno123")
         print("  - João Silva (Produtor): João Silva / produtor123")
         print("  - Maria Carvalho (Produtora): Maria Carvalho / produtor123")
-        
-        # Copiar o banco de dados para o diretório do backend
-        import shutil
-        db_origem = Path(__file__).parent.parent / "biocantinas.db"
-        db_destino = Path(__file__).parent.parent / "biocantinas" / "backend" / "biocantinas.db"
-        
-        if db_origem.exists():
-            print(f"\n📋 Copiando banco de dados para {db_destino}")
-            shutil.copy2(db_origem, db_destino)
-            print("✅ Banco de dados copiado com sucesso!")
         
     except Exception as e:
         print(f"\n❌ ERRO: {e}")

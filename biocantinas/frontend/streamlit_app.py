@@ -280,71 +280,30 @@ if not st.session_state.auth_token:
                 produtor_nome = st.text_input("Nome do Produtor/Empresa", key="produtor_nome")
                 st.caption(f"📅 Data de Inscrição: {date.today().strftime('%Y-%m-%d')}")
                 
-                # Lista fixa de produtos com seus tipos
-                PRODUTOS_DISPONIVEIS = {
-                "Frutas": {
-                    "Maçã": "Fruta",
-                    "Pera": "Fruta",
-                    "Laranja": "Fruta",
-                    "Banana": "Fruta",
-                    "Morango": "Fruta",
-                    "Uva": "Fruta",
-                    "Pêssego": "Fruta",
-                    "Ameixa": "Fruta",
-                    "Melancia": "Fruta",
-                    "Melão": "Fruta"
-                },
-                "Hortícolas": {
-                    "Tomate": "Hortícola",
-                    "Alface": "Hortícola",
-                    "Cenoura": "Hortícola",
-                    "Batata": "Hortícola",
-                    "Cebola": "Hortícola",
-                    "Couve": "Hortícola",
-                    "Brócolos": "Hortícola",
-                    "Pimento": "Hortícola",
-                    "Beringela": "Hortícola",
-                    "Abóbora": "Hortícola",
-                    "Feijão-verde": "Hortícola",
-                    "Espinafre": "Hortícola"
-                },
-                "Proteínas": {
-                    "Frango": "Proteína",
-                    "Carne de Vaca": "Proteína",
-                    "Carne de Porco": "Proteína",
-                    "Peixe": "Proteína",
-                    "Ovos": "Proteína",
-                    "Tofu": "Proteína",
-                    "Grão-de-bico": "Proteína",
-                    "Lentilhas": "Proteína"
-                },
-                "Cereais": {
-                    "Arroz": "Cereais",
-                    "Massa": "Cereais",
-                    "Pão": "Cereais",
-                    "Aveia": "Cereais",
-                    "Quinoa": "Cereais",
-                    "Milho": "Cereais"
-                },
-                "Laticínios": {
-                    "Leite": "Laticínios",
-                    "Queijo": "Laticínios",
-                    "Iogurte": "Laticínios",
-                    "Manteiga": "Laticínios",
-                    "Nata": "Laticínios"
-                },
-                "Outros": {
-                    "Azeite": "Outro",
-                    "Mel": "Outro",
-                    "Ervas Aromáticas": "Outro",
-                    "Especiarias": "Outro"
-                }
-            }
+                # Checkboxes para local e certificado
+                st.markdown("### 🏡 Informações do Produtor")
+                col_check1, col_check2 = st.columns(2)
+                with col_check1:
+                    produtor_local = st.checkbox("Sou produtor local", value=False, key="produtor_local", help="Indica se o produtor é da região local")
+                with col_check2:
+                    produtor_certificado = st.checkbox("Tenho certificado agrícola", value=False, key="produtor_certificado", help="Indica se possui certificação agrícola")
                 
-                # Criar lista plana de produtos
-                todos_produtos = []
-                for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
-                    todos_produtos.extend(produtos.keys())
+                st.divider()
+                
+                # Buscar catálogo de produtos do backend
+                try:
+                    catalogo_resp = requests.get(f"{API_URL}/produtos-catalogo/")
+                    catalogo_resp.raise_for_status()
+                    catalogo = catalogo_resp.json()
+                except Exception as e:
+                    st.error(f"Erro ao carregar catálogo: {str(e)}")
+                    catalogo = []
+
+                # Mapa id->produto e lista (nome, id) ordenada
+                catalogo_por_id = {p["id"]: p for p in catalogo}
+                nomes_e_ids = [(p.get("nome", ""), p["id"]) for p in catalogo]
+                nomes_e_ids.sort(key=lambda x: x[0].lower())
+                nomes_display = [nome for nome, _ in nomes_e_ids]
                 
                 st.markdown("### 🌱 Produtos")
                 num_produtos = st.number_input("Quantos produtos deseja cadastrar?", min_value=1, max_value=10, value=1, key="num_produtos")
@@ -354,22 +313,23 @@ if not st.session_state.auth_token:
                     with st.expander(f"Produto {i+1}", expanded=(i==0)):
                         col1, col2 = st.columns(2)
                         with col1:
+                            opcoes = [""] + nomes_display
                             nome_produto = st.selectbox(
-                                "Selecione o Produto", 
-                                [""] + todos_produtos,
+                                "Selecione o Produto do Catálogo",
+                                opcoes,
                                 key=f"prod_nome_{i}"
                             )
-                            
-                            # Determinar automaticamente o tipo baseado no produto selecionado
-                            tipo_produto = None
+                            produto_id = None
                             if nome_produto:
-                                for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
-                                    if nome_produto in produtos:
-                                        tipo_produto = produtos[nome_produto]
+                                for n, pid in nomes_e_ids:
+                                    if n == nome_produto:
+                                        produto_id = pid
                                         break
-                            
-                            if tipo_produto:
-                                st.info(f"📦 Tipo: **{tipo_produto}**")
+                            # Mostrar tipo do catálogo
+                            if produto_id and produto_id in catalogo_por_id:
+                                tipo_produto = catalogo_por_id[produto_id].get("tipo")
+                                if tipo_produto:
+                                    st.info(f"📦 Tipo: **{tipo_produto}**")
                             
                             biologico = st.checkbox("Produto Biológico", value=True, key=f"prod_bio_{i}")
                         with col2:
@@ -377,10 +337,9 @@ if not st.session_state.auth_token:
                             data_inicio = st.date_input("Início da Produção", key=f"prod_inicio_{i}")
                             data_fim = st.date_input("Fim da Produção", key=f"prod_fim_{i}")
                         
-                        if nome_produto and tipo_produto:
+                        if produto_id:
                             produtos_list.append({
-                                "nome": nome_produto,
-                                "tipo": tipo_produto,
+                                "produto_id": produto_id,
                                 "biologico": biologico,
                                 "capacidade": capacidade,
                                 "intervalo_producao_inicio": str(data_inicio),
@@ -412,6 +371,8 @@ if not st.session_state.auth_token:
                                     fornecedor_payload = {
                                         "nome": produtor_nome,
                                         "data_inscricao": str(date.today()),
+                                        "local": produtor_local,
+                                        "certificado": produtor_certificado,
                                         "produtos": produtos_list
                                     }
                                     
@@ -435,7 +396,7 @@ if not st.session_state.auth_token:
                         except Exception as e:
                             st.error(f"Erro ao finalizar cadastro: {str(e)}")
                     else:
-                        st.error("Preencha todos os campos: usuário, senha, nome do produtor e pelo menos um produto!")
+                        st.error("Preencha todos os campos e selecione ao menos um produto do catálogo!")
             
             else:
                 # Para outros papéis (não PRODUTOR), botão simples

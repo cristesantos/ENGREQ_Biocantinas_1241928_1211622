@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text, Float, DateTime
+from sqlalchemy import Column, Integer, String, Date, Boolean, ForeignKey, Text, Float, DateTime, UniqueConstraint
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -10,23 +10,51 @@ class FornecedorORM(Base):
     nome = Column(String, nullable=False)
     data_inscricao = Column(Date, nullable=False)
     aprovado = Column(Boolean, default=False, nullable=False)
+    local = Column(Boolean, default=False, nullable=False)
+    certificado = Column(Boolean, default=False, nullable=False)
     usuario_id = Column(Integer, ForeignKey("utilizadores.id"), nullable=True)  # Vínculo com o usuário
 
     produtos = relationship("ProdutoFornecedorORM", back_populates="fornecedor", cascade="all, delete-orphan")
     usuario = relationship("UserORM", foreign_keys=[usuario_id])
 
+
+class ProdutoORM(Base):
+    """Catálogo global de produtos"""
+    __tablename__ = "produtos"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String, nullable=False, unique=True)
+    tipo = Column(String, nullable=True)  # fruta, hortícola, proteína, etc.
+    descricao = Column(Text, nullable=True)
+    unidade_medida = Column(String, nullable=True)  # kg, unidade, litro, etc.
+    epoca_tipica = Column(String, nullable=True)  # Outono, Inverno, Primavera, Verão
+    ativo = Column(Boolean, default=True, nullable=False)
+
+    # Relação com produtos de fornecedores
+    fornecedores = relationship("ProdutoFornecedorORM", back_populates="produto", cascade="all, delete-orphan")
+
+
 class ProdutoFornecedorORM(Base):
+    """Produto de um fornecedor específico (referencia o catálogo global)"""
     __tablename__ = "produtos_fornecedor"
+    __table_args__ = (
+        UniqueConstraint('fornecedor_id', 'produto_id', name='uq_fornecedor_produto'),
+    )
+    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fornecedor_id = Column(Integer, ForeignKey("fornecedores.id"), nullable=False)
-    nome = Column(String, nullable=False)
-    tipo = Column(String, nullable=True)  # Categoria do produto: fruta, hortícola, proteína, etc.
-    biologico = Column(Boolean, default=True, nullable=False)  # Indica se o produto é biológico
+    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
+    data_inscricao = Column(DateTime, default=datetime.utcnow, nullable=False)
+    preco_unitario = Column(Float, nullable=True)
+    capacidade = Column(Integer, nullable=False)
+    unidade_medida = Column(String, nullable=True)
     intervalo_producao_inicio = Column(Date, nullable=False)
     intervalo_producao_fim = Column(Date, nullable=False)
-    capacidade = Column(Integer, nullable=False)
+    prioridade = Column(Integer, default=1, nullable=False)
+    biologico = Column(Boolean, default=False, nullable=False)
+    disponivel = Column(Boolean, default=True, nullable=False)
 
     fornecedor = relationship("FornecedorORM", back_populates="produtos")
+    produto = relationship("ProdutoORM", back_populates="fornecedores")
 
 class UserORM(Base):
     __tablename__ = "utilizadores"
