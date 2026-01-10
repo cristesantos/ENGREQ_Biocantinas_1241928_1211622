@@ -23,6 +23,7 @@ class FornecedorRepo:
 				semana_producao_inicio=p.semana_producao_inicio,
 				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
+				unidade=p.unidade,
 				certificado=p.certificado,
 			)
 			for p in model.produtos
@@ -60,6 +61,7 @@ class FornecedorRepo:
 				semana_producao_inicio=p.semana_producao_inicio,
 				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
+				unidade=p.unidade,
 				certificado=p.certificado,
 			)
 			for p in f.produtos
@@ -75,6 +77,7 @@ class FornecedorRepo:
 				semana_producao_inicio=p.semana_producao_inicio,
 				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
+				unidade=p.unidade,
 				certificado=p.certificado,
 			)
 			for p in orm.produtos

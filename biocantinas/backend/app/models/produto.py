@@ -4,9 +4,10 @@ from datetime import date
 @dataclass
 class ProdutoFornecedorModel:
     nome: str
+    semana_producao_inicio: int
+    semana_producao_fim: int
+    capacidade: int
     tipo: str | None = None
     biologico: bool = True
-    semana_producao_inicio: int = None
-    semana_producao_fim: int = None
-    capacidade: int = 0
+    unidade: str = "kg"
     certificado: str | None = None

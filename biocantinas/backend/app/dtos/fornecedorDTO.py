@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from datetime import date
 from typing import List
 from .produtoDTO import ProdutoFornecedor
@@ -22,7 +22,22 @@ class ProdutoFornecedorAdd(BaseModel):
 	semana_producao_inicio: int
 	semana_producao_fim: int
 	capacidade: int
+	unidade: str = "kg"
 	certificado: str | None = None
+	
+	@field_validator('semana_producao_inicio', 'semana_producao_fim')
+	@classmethod
+	def validar_semanas(cls, v):
+		if not (1 <= v <= 52):
+			raise ValueError('Semana deve estar entre 1 e 52')
+		return v
+	
+	@field_validator('semana_producao_fim')
+	@classmethod
+	def validar_fim_maior_que_inicio(cls, v, info):
+		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
+			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		return v
 
 class OrdemFornecedor(BaseModel):
 	produto: str

@@ -14,9 +14,21 @@ def listar_fornecedores():
     return svc.listar_fornecedores()
 
 @router.get("/fornecedores/ordem", response_model=List[OrdemFornecedor])
-def obter_ordem_por_produto():
+def obter_ordem_por_produto(semana: int, fator_correcao: float = 1.0):
+    """Retorna ordem de prioridade dos fornecedores por produto.
+    
+    Considera apenas fornecedores com produto disponível na semana fornecida.
+    
+    Args:
+        semana: Número da semana do ano (1-52). Obrigatório para filtrar por disponibilidade.
+        fator_correcao: Multiplicador para ajustar as necessidades (padrão 1.0).
+    """
+    if not (1 <= semana <= 52):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Semana deve estar entre 1 e 52")
+    
     svc = get_services()
-    return svc.calcular_ordem_por_produto()
+    return svc.calcular_ordem_por_produto(semana, fator_correcao)
 
 @router.get("/fornecedores/meu-perfil", response_model=Fornecedor)
 def obter_meu_perfil(user: User = Depends(get_current_user)):

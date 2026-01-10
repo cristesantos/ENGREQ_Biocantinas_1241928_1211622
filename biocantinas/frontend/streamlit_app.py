@@ -373,7 +373,12 @@ if not st.session_state.auth_token:
                             
                             biologico = st.checkbox("Produto Biológico", value=True, key=f"prod_bio_{i}")
                         with col2:
-                            capacidade = st.number_input("Capacidade (kg)", min_value=1, value=100, key=f"prod_cap_{i}")
+                            col_cap_unit = st.columns(2)
+                            with col_cap_unit[0]:
+                                capacidade = st.number_input("Capacidade", min_value=1, value=100, key=f"prod_cap_{i}")
+                            with col_cap_unit[1]:
+                                unidade = st.selectbox("Unidade", options=["kg", "L", "unidades", "caixas", "outro"], index=0, key=f"prod_unit_{i}")
+                            
                             semana_inicio = st.number_input("Semana de Início (1-52)", min_value=1, max_value=52, value=1, key=f"prod_semana_inicio_{i}")
                             semana_fim = st.number_input("Semana de Fim (1-52)", min_value=1, max_value=52, value=52, key=f"prod_semana_fim_{i}")
                         
@@ -411,6 +416,7 @@ if not st.session_state.auth_token:
                                 "tipo": tipo_produto,
                                 "biologico": biologico,
                                 "capacidade": capacidade,
+                                "unidade": unidade,
                                 "semana_producao_inicio": int(semana_inicio),
                                 "semana_producao_fim": int(semana_fim),
                                 "certificado": certificado_info

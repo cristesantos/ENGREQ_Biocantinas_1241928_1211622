@@ -17,9 +17,9 @@ def patch_aprovacao(API_URL, auth_token, fid, aprovado: bool):
     r.raise_for_status()
     return r.json()
 
-def get_ordem(API_URL, auth_token):
+def get_ordem(API_URL, auth_token, semana: int):
     headers = {"Authorization": f"Bearer {auth_token}"}
-    r = requests.get(f"{API_URL}/fornecedores/ordem", headers=headers)
+    r = requests.get(f"{API_URL}/fornecedores/ordem", params={"semana": semana}, headers=headers)
     r.raise_for_status()
     return r.json()
 
@@ -76,7 +76,8 @@ def pagina_gestor(API_URL, auth_token):
                         if produtos:
                             st.write("**Produtos:**")
                             for p in produtos:
-                                st.write(f"  • {p['nome']} ({p.get('tipo', 'N/A')}) - Capacidade: {p.get('capacidade', 'N/A')} unidades")
+                                unidade = p.get('unidade', 'kg')
+                                st.write(f"  • {p['nome']} ({p.get('tipo', 'N/A')}) - Capacidade: {p.get('capacidade', 'N/A')} {unidade}")
                         else:
                             st.write("Sem produtos cadastrados")
                 
@@ -97,10 +98,14 @@ def pagina_gestor(API_URL, auth_token):
     # Aba 2: Ordem de Fornecimento
     with tab2:
         st.subheader("Ordem de fornecimento por produto")
+        
+        # Obter semana atual
+        from datetime import date as date_class
+        semana_atual = date_class.today().isocalendar()[1]
 
         try:
             fornecedores = list_fornecedores(API_URL, auth_token)
-            ordens = get_ordem(API_URL, auth_token)
+            ordens = get_ordem(API_URL, auth_token, semana_atual)
             
             if ordens:
                 # mapa id -> fornecedor para apresentar nomes e capacidades
@@ -115,11 +120,13 @@ def pagina_gestor(API_URL, auth_token):
                             forn = id_to_fornecedor.get(fid)
                             if forn:
                                 capacidade = None
+                                unidade = "kg"
                                 for p in forn.get('produtos', []):
                                     if p.get('nome', '').lower() == o['produto'].lower():
                                         capacidade = p.get('capacidade')
+                                        unidade = p.get('unidade', 'kg')
                                         break
-                                cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
+                                cap_text = f"{capacidade} {unidade}" if capacidade is not None else "capacidade desconhecida"
                                 st.write(f"{idx}. {forn['nome']} — {cap_text}")
                             else:
                                 st.write(f"{idx}. {fid} — fornecedor não encontrado")

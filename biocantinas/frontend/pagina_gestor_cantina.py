@@ -9,9 +9,9 @@ def list_fornecedores(API_URL, auth_token):
     r.raise_for_status()
     return r.json()
 
-def get_ordem(API_URL, auth_token):
+def get_ordem(API_URL, auth_token, semana: int):
     headers = {"Authorization": f"Bearer {auth_token}"}
-    r = requests.get(f"{API_URL}/fornecedores/ordem", headers=headers)
+    r = requests.get(f"{API_URL}/fornecedores/ordem", params={"semana": semana}, headers=headers)
     r.raise_for_status()
     return r.json()
 
@@ -36,24 +36,35 @@ def pagina_gestor_cantina(API_URL, auth_token):
     # ============ TAB 1: PREVISÃO DE NECESSIDADES ============
     with tab1:
         st.subheader("🔍 Previsão de Necessidades")
-        st.write("Gere uma previsão detalhada das necessidades de aprovisionamento")
+        st.write("Selecione a semana do ano para gerar previsão de aprovisionamento")
         
-        col1, col2 = st.columns(2)
+        ano_corrente = date.today().year
+        
+        # Inicializar session_state
+        if "preview_tab1_dados" not in st.session_state:
+            st.session_state.preview_tab1_dados = None
+        if "fator_ajuste_tab1" not in st.session_state:
+            st.session_state.fator_ajuste_tab1 = 1.0
+        
+        col1, col2 = st.columns([1, 3])
         with col1:
-            data_inicio_prev = st.date_input(
-                "Data Início",
-                value=date.today(),
-                key="tab1_preview_inicio"
-            )
-        with col2:
-            data_fim_prev = st.date_input(
-                "Data Fim",
-                value=date.today() + timedelta(days=7),
-                key="tab1_preview_fim"
+            semana_selecionada = st.number_input(
+                "Semana do Ano",
+                value=date.today().isocalendar()[1],
+                min_value=1,
+                max_value=52,
+                key="tab1_semana"
             )
         
+        # Calcular data início e fim a partir da semana
         if st.button("🔍 Ver Preview", key="tab1_btn_preview"):
             try:
+                # Obter segunda-feira da semana
+                jan4 = date(ano_corrente, 1, 4)
+                week_one_monday = jan4 - timedelta(days=jan4.weekday())
+                data_inicio_prev = week_one_monday + timedelta(weeks=int(semana_selecionada) - 1)
+                data_fim_prev = data_inicio_prev + timedelta(days=6)
+                
                 response = requests.get(
                     f"{API_URL}/aprovisionamento/preview",
                     params={
@@ -64,88 +75,169 @@ def pagina_gestor_cantina(API_URL, auth_token):
                 )
                 
                 if response.status_code == 200:
-                    dados = response.json()
-                    
-                    st.success(f"✅ Preview gerado para {dados['periodo']}")
-                    
-                    # Linha 1: Ementa e Necessidades Planejadas lado a lado
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        st.markdown("**📋 Ementa do Período**")
-                        if dados.get("refeicoes_detalhes"):
-                            ementa_html = "<div style='font-size: 0.85em; line-height: 1.3;'>"
-                            for refeicao in dados["refeicoes_detalhes"]:
-                                data_label = refeicao.get('data', '')
-                                dia_semana = refeicao.get('dia_semana', '')
-                                ementa_html += f"<p style='margin: 8px 0 2px 0;'><b>📅 {data_label} ({dia_semana}) - {refeicao['tipo'].title()}</b><br>"
-                                ementa_html += f"<i>{refeicao['descricao']}</i></p>"
-                                ementa_html += "<ul style='margin: 2px 0 8px 0; padding-left: 20px;'>"
-                                for ing in refeicao['ingredientes']:
-                                    ementa_html += f"<li>{ing['ingrediente']}: {ing.get('quantidade_estimada', ing.get('quantidade', 0))} kg</li>"
-                                ementa_html += "</ul><hr style='margin: 4px 0;'>"
-                            ementa_html += "</div>"
-                            st.markdown(ementa_html, unsafe_allow_html=True)
-                        else:
-                            st.info("Sem ementas")
-                    
-                    with col2:
-                        st.markdown("**📊 Necessidades Planejadas**")
-                        st.caption("Quantidade total de produtos com histórico aplicado")
-                        if dados.get("necessidades_previstas_historico"):
-                            df_planejadas = pd.DataFrame(
-                                list(dados["necessidades_previstas_historico"].items()),
-                                columns=["Produto", "Quantidade (kg)"]
-                            )
-                            st.dataframe(df_planejadas, width='stretch')
-                        else:
-                            st.info("Sem histórico")
-                    
-                    st.divider()
-                    
-                    # Linha 2: Histórico de Reservas (largura total)
-                    st.markdown("**📈 Histórico de Reservas**")
-                    st.caption("Dados históricos por prato do período")
-                    if dados.get("historico_detalhes"):
-                        df_historico = pd.DataFrame(dados["historico_detalhes"])
-                        # Calcular altura baseada no número de refeições (aproximadamente 35px por linha + header)
-                        num_refeicoes = len(dados.get("refeicoes_detalhes", []))
-                        altura_historico = min(max(num_refeicoes * 35 + 38, 150), 400)
-                        
-                        # Configurar colunas com larguras personalizadas
-                        column_config = {
-                            "Data": st.column_config.TextColumn("Data", width="small"),
-                            "Dia Semana": st.column_config.TextColumn("Dia Semana", width="small"),
-                            "Tipo": st.column_config.TextColumn("Tipo", width="small"),
-                            "Descrição": st.column_config.TextColumn("Descrição", width="large"),
-                            "Previsão": st.column_config.NumberColumn("Previsão", width="small"),
-                            "Reservas Reais": st.column_config.NumberColumn("Reservas Reais", width="small")
-                        }
-                        
-                        st.dataframe(
-                            df_historico, 
-                            width='stretch', 
-                            height=altura_historico,
-                            column_config=column_config,
-                            hide_index=True
-                        )
-                    else:
-                        st.info("Sem dados históricos")
-                
+                    st.session_state.preview_tab1_dados = {
+                        "dados": response.json(),
+                        "semana": semana_selecionada,
+                        "ano": ano_corrente,
+                        "data_inicio": data_inicio_prev,
+                        "data_fim": data_fim_prev
+                    }
+                    st.session_state.fator_ajuste_tab1 = 1.0
                 else:
                     st.error(f"❌ Erro {response.status_code}: {response.json().get('detail', 'Erro desconhecido')}")
             
             except Exception as e:
                 st.error(f"❌ Erro ao conectar com API: {str(e)}")
+        
+        # Mostrar dados se existem no session_state (FORA da condicional do botão)
+        if st.session_state.preview_tab1_dados:
+            preview_info = st.session_state.preview_tab1_dados
+            dados = preview_info["dados"]
+            semana_selecionada = preview_info["semana"]
+            ano_corrente = preview_info["ano"]
+            data_inicio_prev = preview_info["data_inicio"]
+            data_fim_prev = preview_info["data_fim"]
+            
+            st.success(f"✅ Preview gerado para semana {semana_selecionada}/{ano_corrente}")
+            st.info(f"📅 Período: {data_inicio_prev.strftime('%d/%m/%Y')} (Segunda) a {data_fim_prev.strftime('%d/%m/%Y')} (Domingo)")
+            
+            # Linha 1: Ementa e Necessidades Planejadas lado a lado
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**📋 Ementa do Período**")
+                if dados.get("refeicoes_detalhes"):
+                    ementa_html = "<div style='font-size: 0.85em; line-height: 1.3;'>"
+                    for refeicao in dados["refeicoes_detalhes"]:
+                        data_label = refeicao.get('data', '')
+                        dia_semana = refeicao.get('dia_semana', '')
+                        ementa_html += f"<p style='margin: 8px 0 2px 0;'><b>📅 {data_label} ({dia_semana}) - {refeicao['tipo'].title()}</b><br>"
+                        ementa_html += f"<i>{refeicao['descricao']}</i></p>"
+                        ementa_html += "<ul style='margin: 2px 0 8px 0; padding-left: 20px;'>"
+                        for ing in refeicao['ingredientes']:
+                            ementa_html += f"<li>{ing['ingrediente']}: {ing.get('quantidade_estimada', ing.get('quantidade', 0))} kg</li>"
+                        ementa_html += "</ul><hr style='margin: 4px 0;'>"
+                    ementa_html += "</div>"
+                    st.markdown(ementa_html, unsafe_allow_html=True)
+                else:
+                    st.info("Sem ementas")
+            
+            with col2:
+                st.markdown("**📊 Necessidades Planejadas**")
+                st.caption("Quantidade total de produtos com histórico aplicado")
+                
+                if dados.get("necessidades_previstas_historico"):
+                    # ========== FATOR DE CORREÇÃO (FORA DA CONDICIONAL) ==========
+                    st.markdown("**⚙️ Fator de Correção**")
+                    col_fator, col_btn = st.columns([2, 1])
+                    with col_fator:
+                        fator_input = st.number_input(
+                            "Fator de Correção",
+                            min_value=0.0,
+                            max_value=2.0,
+                            value=st.session_state.fator_ajuste_tab1,
+                            step=0.05,
+                            help="1.0 = sem ajuste | 1.2 = +20% | 0.8 = -20%",
+                            key="fator_input_tab1"
+                        )
+                    
+                    with col_btn:
+                        st.write("")  # Espaçamento
+                        if st.button("✅ Ajustar", key="btn_ajustar_tab1"):
+                            # Refazer chamada ao API com fator de correção
+                            try:
+                                response = requests.get(
+                                    f"{API_URL}/aprovisionamento/preview",
+                                    params={
+                                        "data_inicio": str(data_inicio_prev),
+                                        "data_fim": str(data_fim_prev),
+                                        "fator_correcao": fator_input
+                                    },
+                                    headers={"Authorization": f"Bearer {auth_token}"}
+                                )
+                                
+                                if response.status_code == 200:
+                                    st.session_state.preview_tab1_dados["dados"] = response.json()
+                                    st.session_state.fator_ajuste_tab1 = fator_input
+                                else:
+                                    st.error(f"❌ Erro ao ajustar: {response.status_code}")
+                            except Exception as e:
+                                st.error(f"❌ Erro: {str(e)}")
+                    
+                    # Mostrar info sobre o ajuste atual
+                    fator_atual = st.session_state.fator_ajuste_tab1
+                    if fator_atual != 1.0:
+                        variacao = (fator_atual - 1.0) * 100
+                        sinal = "+" if variacao > 0 else ""
+                        st.success(f"✅ Fator aplicado: {fator_atual:.2f} ({sinal}{variacao:.1f}%)")
+                    
+                    st.divider()
+                    
+                    # Exibir necessidades com valores ajustados (backend já aplica fator)
+                    necessidades_ajustadas = dados.get("necessidades_ajustadas", dados.get("necessidades_previstas_historico", {}))
+                    necessidades_originais = dados.get("necessidades_previstas", {})
+                    
+                    df_planejadas = pd.DataFrame([
+                        {
+                            "Produto": prod,
+                            "Quantidade Original (kg)": necessidades_originais.get(prod, qtd),
+                            "Quantidade Ajustada (kg)": qtd
+                        }
+                        for prod, qtd in necessidades_ajustadas.items()
+                    ])
+                    st.dataframe(df_planejadas, width='stretch')
+                else:
+                    st.info("Sem histórico")
+            
+            st.divider()
+            
+            # Linha 2: Histórico de Reservas (largura total)
+            st.markdown("**📈 Histórico de Reservas**")
+            st.caption("Dados históricos por prato do período")
+            if dados.get("historico_detalhes"):
+                df_historico = pd.DataFrame(dados["historico_detalhes"])
+                # Calcular altura baseada no número de refeições (aproximadamente 35px por linha + header)
+                num_refeicoes = len(dados.get("refeicoes_detalhes", []))
+                altura_historico = min(max(num_refeicoes * 35 + 38, 150), 400)
+                
+                # Configurar colunas com larguras personalizadas
+                column_config = {
+                    "Data": st.column_config.TextColumn("Data", width="small"),
+                    "Dia Semana": st.column_config.TextColumn("Dia Semana", width="small"),
+                    "Tipo": st.column_config.TextColumn("Tipo", width="small"),
+                    "Descrição": st.column_config.TextColumn("Descrição", width="large"),
+                    "Previsão": st.column_config.NumberColumn("Previsão", width="small"),
+                    "Reservas Reais": st.column_config.NumberColumn("Reservas Reais", width="small")
+                }
+                
+                st.dataframe(
+                    df_historico, 
+                    width='stretch', 
+                    height=altura_historico,
+                    column_config=column_config,
+                    hide_index=True
+                )
+            else:
+                st.info("Sem dados históricos")
     
     # ============ TAB 2: ORDEM DE FORNECIMENTO ============
     with tab2:
         st.subheader("📋 Ordem de Fornecimento por Produto")
         st.write("Visualize a ordem de prioridade dos fornecedores por produto")
         
+        # Obter semana atual
+        from datetime import date as date_class
+        semana_atual = date_class.today().isocalendar()[1]
+        
+        # Usar fator da TAB 1 se houver dados preview
+        fator_para_ordem = 1.0
+        if st.session_state.get("preview_tab1_dados"):
+            fator_para_ordem = st.session_state.get("fator_ajuste_tab1", 1.0)
+        
         try:
             response = requests.get(
                 f"{API_URL}/fornecedores/ordem",
+                params={"semana": int(semana_atual), "fator_correcao": fator_para_ordem},
                 headers={"Authorization": f"Bearer {auth_token}"}
             )
             
@@ -172,11 +264,13 @@ def pagina_gestor_cantina(API_URL, auth_token):
                                     forn = id_to_fornecedor.get(fid)
                                     if forn:
                                         capacidade = None
+                                        unidade = "kg"
                                         for p in forn.get('produtos', []):
                                             if p.get('nome', '').lower() == o['produto'].lower():
                                                 capacidade = p.get('capacidade')
+                                                unidade = p.get('unidade', 'kg')
                                                 break
-                                        cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
+                                        cap_text = f"{capacidade} {unidade}" if capacidade is not None else "capacidade desconhecida"
                                         st.write(f"{idx}. {forn['nome']} — {cap_text}")
                                     else:
                                         st.write(f"{idx}. {fid} — fornecedor não encontrado")
@@ -195,29 +289,34 @@ def pagina_gestor_cantina(API_URL, auth_token):
         st.subheader("Plano de Produção")
         st.write("Comparação entre previsão histórica e reservas reais")
         
-        col1, col2 = st.columns(2)
+        ano_corrente_tab3 = date.today().year
+        
+        col1, col2 = st.columns([1, 3])
         with col1:
-            data_inicio = st.date_input(
-                "Data Início",
-                value=date.today(),
-                key="tab3_plan_inicio"
-            )
-        with col2:
-            data_fim = st.date_input(
-                "Data Fim",
-                value=date.today() + timedelta(days=6),
-                key="tab3_plan_fim"
+            semana_tab3 = st.number_input(
+                "Semana do Ano",
+                value=date.today().isocalendar()[1],
+                min_value=1,
+                max_value=52,
+                key="tab3_semana"
             )
         
         if st.button("📊 Ver Planejamento"):
             try:
+                # Calcular datas a partir da semana
+                jan4 = date(ano_corrente_tab3, 1, 4)
+                week_one_monday = jan4 - timedelta(days=jan4.weekday())
+                data_inicio = week_one_monday + timedelta(weeks=int(semana_tab3) - 1)
+                data_fim = data_inicio + timedelta(days=6)
+                
                 dados = get_preview_aprovisionamento(
                     API_URL, auth_token, 
                     data_inicio.isoformat(), 
                     data_fim.isoformat()
                 )
                 
-                st.success(f"✅ Planejamento gerado para {dados['periodo']}")
+                st.success(f"✅ Planejamento gerado para semana {semana_tab3}/{ano_corrente_tab3}")
+                st.info(f"📅 Período: {data_inicio.strftime('%d/%m/%Y')} (Segunda) a {data_fim.strftime('%d/%m/%Y')} (Domingo)")
                 
                 # Mostrar resumo das refeições
                 if dados.get('refeicoes_detalhes'):

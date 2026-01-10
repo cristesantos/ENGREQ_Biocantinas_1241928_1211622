@@ -16,6 +16,7 @@ def dto_to_model_create(dto: FornecedorCreateDTO, new_id: int) -> FornecedorMode
             semana_producao_inicio=p.semana_producao_inicio,
             semana_producao_fim=p.semana_producao_fim,
             capacidade=p.capacidade,
+            unidade=p.unidade,
             certificado=p.certificado,
         )
         for p in dto.produtos
@@ -39,6 +40,7 @@ def model_to_dto(model: FornecedorModel) -> FornecedorDTO:
             semana_producao_inicio=p.semana_producao_inicio,
             semana_producao_fim=p.semana_producao_fim,
             capacidade=p.capacidade,
+            unidade=p.unidade,
             certificado=p.certificado,
         )
         for p in model.produtos

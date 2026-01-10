@@ -25,6 +25,7 @@ class ProdutoFornecedorORM(Base):
     semana_producao_inicio = Column(Integer, nullable=False)  # Semana do ano (1-52)
     semana_producao_fim = Column(Integer, nullable=False)  # Semana do ano (1-52)
     capacidade = Column(Integer, nullable=False)
+    unidade = Column(String, default="kg", nullable=False)  # Unidade de medida: kg, L, unidade, etc.
     certificado = Column(String, nullable=True)  # Informação de certificação (texto descritivo)
 
     fornecedor = relationship("FornecedorORM", back_populates="produtos")

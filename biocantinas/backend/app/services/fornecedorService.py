@@ -89,6 +89,7 @@ class Services:
             semana_producao_inicio=produto_data.semana_producao_inicio,
             semana_producao_fim=produto_data.semana_producao_fim,
             capacidade=produto_data.capacidade,
+            unidade=produto_data.unidade,
             certificado=produto_data.certificado,
         )
         
@@ -108,12 +109,35 @@ class Services:
         self.repo.atualizar_fornecedor(fornecedor)
         return model_to_dto(fornecedor)
 
-    def calcular_ordem_por_produto(self) -> List[OrdemFornecedor]:
+    def calcular_ordem_por_produto(self, semana: int, fator_correcao: float = 1.0) -> List[OrdemFornecedor]:
+        """Calcula ordem de prioridade dos fornecedores por produto.
+        
+        Filtra apenas fornecedores com produtos disponíveis na semana especificada.
+        
+        Critérios de ordenação:
+        1. Apenas fornecedores com produto disponível naquela semana
+        2. Ordenação por data de inscrição (mais antigo = maior prioridade)
+        
+        Args:
+            semana: número da semana do ano (1-52). Obrigatório e deve estar entre 1 e 52.
+            fator_correcao: multiplicador para ajustar as necessidades (padrão 1.0).
+            
+        Raises:
+            ValueError: Se semana não está entre 1 e 52.
+        """
+        if not (1 <= semana <= 52):
+            raise ValueError(f"Semana deve estar entre 1 e 52, recebido: {semana}")
+        
         fornecedores = [f for f in self.repo.listar_fornecedores() if f.aprovado]
         mapa: Dict[str, List[FornecedorModel]] = {}
 
         for f in fornecedores:
             for p in f.produtos:
+                # Verificar se o produto está disponível nesta semana
+                if not (p.semana_producao_inicio <= semana <= p.semana_producao_fim):
+                    # Produto não está disponível nesta semana
+                    continue
+                
                 mapa.setdefault(p.nome, []).append(f)
 
         ordens: List[OrdemFornecedor] = []
