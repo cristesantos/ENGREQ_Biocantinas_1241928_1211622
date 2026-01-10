@@ -117,7 +117,7 @@ def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: Us
 
 
 @router.get("/freguesias/fechos", response_model=List[FreguesiaFecho])
-def listar_fechos_freguesia(user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA"))):
+def listar_fechos_freguesia(user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA", "PRODUTOR", "FORNECEDOR"))):
     svc = get_services()
     return svc.listar_fechos_freguesia(False)
 

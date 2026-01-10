@@ -95,6 +95,24 @@ def pagina_produtor(API_URL, auth_token):
             
             if perfil_response.status_code == 200:
                 perfil = perfil_response.json()
+
+                # Estado sanitário local e por freguesia
+                estado_quarentena = perfil.get("em_quarentena", False)
+                freguesia_atual = (perfil.get("freguesia") or "").strip()
+                freguesia_fechada = False
+                try:
+                    fechos_resp = requests.get(
+                        f"{API_URL}/freguesias/fechos",
+                        headers=headers,
+                    )
+                    if fechos_resp.status_code == 200:
+                        fechados = fechos_resp.json()
+                        freguesia_fechada = any(
+                            (f.get("nome") or "").strip().lower() == freguesia_atual.lower() and f.get("ativo")
+                            for f in fechados
+                        ) if freguesia_atual else False
+                except Exception:
+                    freguesia_fechada = False
                 
                 # Calcular produtos aprovados e não aprovados
                 produtos = perfil.get("produtos", [])
@@ -119,7 +137,16 @@ def pagina_produtor(API_URL, auth_token):
                 with col3:
                     freguesia = perfil.get("freguesia", "N/A") or "N/A"
                     st.write(f"<h3>📍 Freguesia</h3><h2>{freguesia}</h2>", unsafe_allow_html=True)
-                # col4, col5 ficam em branco
+                with col4:
+                    # Fecho sanitário tem precedência sobre quarentena
+                    if freguesia_fechada:
+                        status_html = "<h3>🛡️ Estado</h3><h2>Fecho sanitário</h2>"
+                    elif estado_quarentena:
+                        status_html = "<h3>🛡️ Estado</h3><h2>Em quarentena</h2>"
+                    else:
+                        status_html = "<h3>🛡️ Estado</h3><h2>Ativo</h2>"
+                    st.write(status_html, unsafe_allow_html=True)
+                # col5 fica em branco
                 
                 st.space()
                 
