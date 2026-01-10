@@ -13,7 +13,7 @@ from ..dtos.fornecedorDTO import (
     FreguesiaFecho,
 )
 from ..services.fornecedorService import get_services
-from ..auth.jwt import get_current_user, require_role
+from ..auth.jwt import get_current_user, require_role, require_any_role
 from ..dtos.userDTO import User
 from ..models.catalogo_produtos import produto_existe, CATALOGO_PRODUTOS
 
@@ -108,7 +108,7 @@ def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = D
 
 
 @router.patch("/fornecedores/{fid}/estado", response_model=Fornecedor)
-def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: User = Depends(require_role("GESTOR"))):
+def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA"))):
     svc = get_services()
     try:
         return svc.atualizar_estado_fornecedor(fid, body)
@@ -117,13 +117,13 @@ def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: Us
 
 
 @router.get("/freguesias/fechos", response_model=List[FreguesiaFecho])
-def listar_fechos_freguesia(user: User = Depends(require_role("GESTOR"))):
+def listar_fechos_freguesia(user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA"))):
     svc = get_services()
     return svc.listar_fechos_freguesia(False)
 
 
 @router.patch("/freguesias/fechos", response_model=FreguesiaFecho)
-def definir_fecho_freguesia(body: FreguesiaFecho, user: User = Depends(require_role("GESTOR"))):
+def definir_fecho_freguesia(body: FreguesiaFecho, user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA"))):
     svc = get_services()
     return svc.definir_fecho_freguesia(body.nome, body.ativo)
 

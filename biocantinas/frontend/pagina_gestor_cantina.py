@@ -22,6 +22,32 @@ def get_preview_aprovisionamento(API_URL, auth_token, data_inicio, data_fim):
     r.raise_for_status()
     return r.json()
 
+
+def patch_estado_fornecedor(API_URL, auth_token, fid, em_quarentena=None, freguesia=None):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    body = {}
+    if em_quarentena is not None:
+        body["em_quarentena"] = em_quarentena
+    if freguesia is not None:
+        body["freguesia"] = freguesia
+    r = requests.patch(f"{API_URL}/fornecedores/{fid}/estado", json=body, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def list_fechos(API_URL, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    r = requests.get(f"{API_URL}/freguesias/fechos", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def patch_fecho(API_URL, auth_token, nome: str, ativo: bool):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    r = requests.patch(f"{API_URL}/freguesias/fechos", json={"nome": nome, "ativo": ativo}, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
 def pagina_gestor_cantina(API_URL, auth_token):
     # Aumenta fonte das abas via CSS customizado
     st.markdown(
@@ -210,6 +236,18 @@ def pagina_gestor_cantina(API_URL, auth_token):
                 if response_forn.status_code == 200:
                     fornecedores = response_forn.json()
                     id_to_fornecedor = {f['id']: f for f in fornecedores}
+
+                    # Freguesias em fecho
+                    freguesias_fechadas = set()
+                    try:
+                        fechados = list_fechos(API_URL, auth_token)
+                        freguesias_fechadas = {
+                            (f.get("nome") or "").strip().lower()
+                            for f in fechados
+                            if f.get("ativo")
+                        }
+                    except Exception as e:
+                        st.error(f"Erro ao carregar fechos: {e}")
                     
                     if ordens:
                         for o in ordens:
@@ -228,7 +266,28 @@ def pagina_gestor_cantina(API_URL, auth_token):
                                                 unidade = p.get('unidade', 'kg')
                                                 break
                                         cap_text = f"{capacidade} {unidade}" if capacidade is not None else "capacidade desconhecida"
-                                        st.write(f"{idx}. {forn['nome']} — {cap_text}")
+
+                                        estado_quarentena = forn.get('em_quarentena', False)
+                                        freguesia_atual = forn.get('freguesia') or ""
+                                        freguesia_fechada = (freguesia_atual.strip().lower() in freguesias_fechadas) if freguesia_atual else False
+
+                                        st.markdown(
+                                            f"{idx}. {forn['nome']} — {cap_text}  | "
+                                            f"🛡️ Quarentena: **{'Sim' if estado_quarentena else 'Não'}** | "
+                                            f"📍 Freguesia: **{freguesia_atual or 'N/D'}**"
+                                        )
+
+                                        if st.button(
+                                            "Ativar quarentena" if not estado_quarentena else "Remover quarentena",
+                                            key=f"qc_{fid}_{o['produto']}",
+                                            type="secondary",
+                                            help="Bloqueia todos os produtos deste fornecedor",
+                                        ):
+                                            patch_estado_fornecedor(API_URL, auth_token, fid, em_quarentena=not estado_quarentena)
+                                            st.rerun()
+
+                                        if freguesia_fechada:
+                                            st.caption("Freguesia fechada — fornecedor não pode ser aprovado.")
                                     else:
                                         st.write(f"{idx}. {fid} — fornecedor não encontrado")
                     else:
@@ -240,6 +299,59 @@ def pagina_gestor_cantina(API_URL, auth_token):
         
         except Exception as e:
             st.error(f"❌ Erro: {str(e)}")
+
+        st.divider()
+        st.subheader("🚫 Fechos sanitários por freguesia")
+
+        try:
+            fechados = list_fechos(API_URL, auth_token)
+            fechados_ativos = [f for f in fechados if f.get("ativo")]
+            if fechados_ativos:
+                st.write("Freguesias bloqueadas:")
+                for fecho in fechados_ativos:
+                    col_a, col_b = st.columns([3, 1])
+                    with col_a:
+                        st.write(f"• {fecho['nome']}")
+                    with col_b:
+                        if st.button("Reabrir", key=f"reabrir_cantina_{fecho['nome']}"):
+                            patch_fecho(API_URL, auth_token, fecho["nome"], False)
+                            st.rerun()
+            else:
+                st.caption("Nenhuma freguesia em fecho sanitário.")
+
+            FREGUESIAS_CINFAES = [
+                "Alhões",
+                "Bustelo",
+                "Cinfães",
+                "Espadanedo",
+                "Ferreiros de Tendais",
+                "Fornelos",
+                "Freigil e Miomães",
+                "Moimenta",
+                "Nespereira",
+                "Oliveira do Douro",
+                "Santiago de Piães",
+                "São Cristóvão de Nogueira",
+                "Souselo",
+                "Tarouquela",
+                "Tendais",
+                "Travanca",
+            ]
+
+            nova_freguesia = st.selectbox(
+                "Selecionar freguesia para fecho",
+                options=[""] + FREGUESIAS_CINFAES,
+                key="nova_fecho_cantina",
+                help="Ao fechar, todos os fornecedores dessa freguesia ficam reprovados automaticamente",
+            )
+            if st.button("Fechar freguesia", key="btn_fechar_freg_cantina"):
+                if nova_freguesia.strip():
+                    patch_fecho(API_URL, auth_token, nova_freguesia.strip(), True)
+                    st.rerun()
+                else:
+                    st.error("Indique o nome da freguesia.")
+        except requests.HTTPError as e:
+            st.error(f"Erro ao gerir fechos: {e}")
     
     # ============ TAB 3: PLANO DE PRODUÇÃO ============
     with tab3:

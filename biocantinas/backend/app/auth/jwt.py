@@ -60,3 +60,11 @@ def require_role(role: str):
             raise HTTPException(status_code=403, detail="Sem permissão")
         return user
     return _dep
+
+
+def require_any_role(*roles: str):
+    def _dep(user: User = Depends(get_current_user)) -> User:
+        if user.role not in roles:
+            raise HTTPException(status_code=403, detail="Sem permissão")
+        return user
+    return _dep
