@@ -7,7 +7,7 @@ from typing import List
 class ItemRefeicaoModel:
     ingrediente: str
     produto_id: int | None = None
-    quantidade_estimada: int | None = None
+    quantidade_estimada: float | None = None
 
 
 @dataclass

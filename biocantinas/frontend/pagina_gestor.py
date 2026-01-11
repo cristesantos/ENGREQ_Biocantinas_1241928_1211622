@@ -1,5 +1,7 @@
 import streamlit as st
 import requests
+import json
+import html
 
 def list_fornecedores(API_URL, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
@@ -17,9 +19,35 @@ def patch_aprovacao(API_URL, auth_token, fid, aprovado: bool):
     r.raise_for_status()
     return r.json()
 
-def get_ordem(API_URL, auth_token):
+def get_ordem(API_URL, auth_token, semana: int):
     headers = {"Authorization": f"Bearer {auth_token}"}
-    r = requests.get(f"{API_URL}/fornecedores/ordem", headers=headers)
+    r = requests.get(f"{API_URL}/fornecedores/ordem", params={"semana": semana}, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def patch_estado_fornecedor(API_URL, auth_token, fid, em_quarentena=None, freguesia=None):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    body = {}
+    if em_quarentena is not None:
+        body["em_quarentena"] = em_quarentena
+    if freguesia is not None:
+        body["freguesia"] = freguesia
+    r = requests.patch(f"{API_URL}/fornecedores/{fid}/estado", json=body, headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def list_fechos(API_URL, auth_token):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    r = requests.get(f"{API_URL}/freguesias/fechos", headers=headers)
+    r.raise_for_status()
+    return r.json()
+
+
+def patch_fecho(API_URL, auth_token, nome: str, ativo: bool):
+    headers = {"Authorization": f"Bearer {auth_token}"}
+    r = requests.patch(f"{API_URL}/freguesias/fechos", json={"nome": nome, "ativo": ativo}, headers=headers)
     r.raise_for_status()
     return r.json()
 
@@ -50,15 +78,6 @@ def get_kpi_consolidado(API_URL, auth_token, ementa_id):
 def pagina_gestor(API_URL, auth_token):
     st.header("Gestão de Fornecedores")
 
-    # Carregar catálogo para mapear produto_id -> nome/tipo
-    try:
-        cat_resp = requests.get(f"{API_URL}/produtos-catalogo/")
-        cat_resp.raise_for_status()
-        catalogo = cat_resp.json()
-    except Exception:
-        catalogo = []
-    catalogo_por_id = {p.get("id"): p for p in catalogo}
-
     # Criar abas
     tab1, tab2, tab3 = st.tabs(["Fornecedores", "Ordem de Fornecimento", "KPIs - Sustentabilidade"])
     
@@ -68,99 +87,169 @@ def pagina_gestor(API_URL, auth_token):
             st.rerun()
 
         fornecedores = list_fornecedores(API_URL, auth_token)
-        
+
+        # Carregar freguesias em fecho para bloquear aprovação
+        fechados_data = []
+        freguesias_fechadas = set()
+        try:
+            fechados_data = list_fechos(API_URL, auth_token)
+            freguesias_fechadas = {
+                (f.get("nome") or "").strip().lower()
+                for f in fechados_data
+                if f.get("ativo")
+            }
+        except requests.HTTPError as e:
+            st.error(f"Erro ao carregar fechos: {e}")
+
         if fornecedores:
-            # Separar fornecedores por status
-            aprovados = [f for f in fornecedores if f.get('aprovado')]
-            pendentes = [f for f in fornecedores if not f.get('aprovado') and f.get('local', False)]
-            reprovados = [f for f in fornecedores if not f.get('aprovado') and not f.get('local', False)]
-            
-            # Função auxiliar para exibir fornecedor
-            def exibir_fornecedor(f, status_tab):
+            st.subheader("Lista de Fornecedores")
+            for f in fornecedores:
                 col1, col2, col3 = st.columns([5, 1, 1])
                 
                 with col1:
                     with st.expander(f"#{f['id']} - {f['nome']}"):
-                        local_badge = "🏡 Local" if f.get('local', False) else "❌ Não Local"
-                        cert_badge = "✅ Certificado" if f.get('certificado', False) else "❌ Não Certificado"
                         st.caption(
                             f"Data inscrição: {f['data_inscricao']} | "
-                            f"{local_badge} | {cert_badge}"
+                            f"Aprovado: {f['aprovado']}"
                         )
+
+                        estado_quarentena = f.get('em_quarentena', False)
+                        freguesia_atual = f.get('freguesia') or ""
+                        freguesia_fechada = (freguesia_atual.strip().lower() in freguesias_fechadas) if freguesia_atual else False
+                        st.markdown(
+                            f"🛡️ Quarentena: **{'Sim' if estado_quarentena else 'Não'}** | "
+                            f"📍 Freguesia: **{freguesia_atual or 'N/D'}**"
+                        )
+
+                        cols_estado = st.columns([1])
+                        with cols_estado[0]:
+                            if st.button(
+                                "Ativar quarentena" if not estado_quarentena else "Remover quarentena",
+                                key=f"q_{f['id']}",
+                                type="secondary",
+                                help="Bloqueia todos os produtos deste fornecedor",
+                            ):
+                                patch_estado_fornecedor(API_URL, auth_token, f["id"], em_quarentena=not estado_quarentena)
+                                st.rerun()
                         
                         # Listar produtos
                         produtos = f.get('produtos', [])
                         if produtos:
                             st.write("**Produtos:**")
                             for p in produtos:
-                                pid = p.get('produto_id')
-                                prod_cat = catalogo_por_id.get(pid, {})
-                                nome = prod_cat.get('nome', f"ID {pid}")
-                                tipo = prod_cat.get('tipo', 'N/A')
-                                st.write(f"  • {nome} ({tipo}) - Capacidade: {p.get('capacidade', 'N/A')} unidades")
+                                unidade = p.get('unidade', 'kg')
+                                st.write(f"  • {p['nome']} ({p.get('tipo', 'N/A')}) - Capacidade: {p.get('capacidade', 'N/A')} {unidade}")
+
+                                cert = p.get('certificado')
+                                if cert:
+                                    texto_cert = None
+                                    arquivo_url = None
+                                    arquivo_nome = None
+                                    try:
+                                        cert_obj = json.loads(cert)
+                                        texto_cert = cert_obj.get("texto")
+                                        arquivo_url = cert_obj.get("arquivo_url")
+                                        arquivo_nome = cert_obj.get("arquivo_nome")
+                                    except Exception:
+                                        texto_cert = cert
+                                    partes_html = []
+                                    if texto_cert:
+                                        partes_html.append(html.escape(texto_cert))
+                                    if arquivo_url:
+                                        resolved_url = arquivo_url if str(arquivo_url).startswith("http") else f"{API_URL}{arquivo_url}"
+                                        link_label = html.escape(arquivo_nome or "Ver certificado")
+                                        partes_html.append(f"<a href='{resolved_url}' target='_blank' rel='noopener noreferrer'>{link_label}</a>")
+                                    conteudo_cert = "<br>".join(partes_html) if partes_html else html.escape(str(cert))
+                                    st.markdown(
+                                        f"<div style='margin-left:12px;'>📜 Certificado:<br><div style='background: #f7f7f9; padding: 6px; border-radius: 6px;'>{conteudo_cert}</div></div>",
+                                        unsafe_allow_html=True,
+                                    )
                         else:
                             st.write("Sem produtos cadastrados")
                 
                 with col2:
-                    if status_tab == "pendentes":
-                        if st.button("Aprovar", key=f"ap_{f['id']}"):
-                            try:
+                    if not f["aprovado"]:
+                        if estado_quarentena:
+                            st.caption("Não é possível aprovar enquanto estiver em quarentena.")
+                        elif freguesia_fechada:
+                            st.caption("Não é possível aprovar enquanto a freguesia estiver fechada.")
+                        else:
+                            if st.button("Aprovar", key=f"ap_{f['id']}"):
                                 patch_aprovacao(API_URL, auth_token, f["id"], True)
                                 st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao aprovar: {str(e)}")
                 
                 with col3:
-                    if status_tab == "aprovados":
+                    if f["aprovado"]:
                         if st.button("Reprovar", key=f"rp_{f['id']}"):
-                            try:
-                                patch_aprovacao(API_URL, auth_token, f["id"], False)
-                                st.rerun()
-                            except Exception as e:
-                                st.error(f"Erro ao reprovar: {str(e)}")
-                    elif status_tab == "reprovados" and not f.get('local', False):
-                        st.warning("⚠️ Não local - Não pode ser aprovado")
-            
-            # Abas para os diferentes status
-            status_tab1, status_tab2, status_tab3 = st.tabs([
-                f"✅ Aprovados ({len(aprovados)})",
-                f"⏳ Pendentes ({len(pendentes)})",
-                f"❌ Reprovados ({len(reprovados)})"
-            ])
-            
-            with status_tab1:
-                if aprovados:
-                    st.subheader("Fornecedores Aprovados")
-                    for f in aprovados:
-                        exibir_fornecedor(f, "aprovados")
-                else:
-                    st.info("Nenhum fornecedor aprovado.")
-            
-            with status_tab2:
-                if pendentes:
-                    st.subheader("Fornecedores Pendentes")
-                    for f in pendentes:
-                        exibir_fornecedor(f, "pendentes")
-                else:
-                    st.info("Nenhum fornecedor pendente.")
-            
-            with status_tab3:
-                if reprovados:
-                    st.subheader("Fornecedores Reprovados")
-                    for f in reprovados:
-                        exibir_fornecedor(f, "reprovados")
-                else:
-                    st.info("Nenhum fornecedor reprovado.")
+                            patch_aprovacao(API_URL, auth_token, f["id"], False)
+                            st.rerun()
         else:
             st.info("Ainda não há fornecedores.")
+
+        st.divider()
+        st.subheader("🚫 Fechos sanitários por freguesia")
+
+        try:
+            fechados = fechados_data or list_fechos(API_URL, auth_token)
+            fechados_ativos = [f for f in fechados if f.get("ativo")]
+            if fechados_ativos:
+                st.write("Freguesias bloqueadas:")
+                for fecho in fechados_ativos:
+                    col_a, col_b = st.columns([3, 1])
+                    with col_a:
+                        st.write(f"• {fecho['nome']}")
+                    with col_b:
+                        if st.button("Reabrir", key=f"reabrir_{fecho['nome']}"):
+                            patch_fecho(API_URL, auth_token, fecho["nome"], False)
+                            st.rerun()
+            else:
+                st.caption("Nenhuma freguesia em fecho sanitário.")
+
+            FREGUESIAS_CINFAES = [
+                "Alhões",
+                "Bustelo",
+                "Cinfães",
+                "Espadanedo",
+                "Ferreiros de Tendais",
+                "Fornelos",
+                "Freigil e Miomães",
+                "Moimenta",
+                "Nespereira",
+                "Oliveira do Douro",
+                "Santiago de Piães",
+                "São Cristóvão de Nogueira",
+                "Souselo",
+                "Tarouquela",
+                "Tendais",
+                "Travanca",
+            ]
+
+            nova_freguesia = st.selectbox(
+                "Selecionar freguesia para fecho",
+                options=[""] + FREGUESIAS_CINFAES,
+                key="nova_fecho",
+                help="Ao fechar, todos os fornecedores dessa freguesia ficam reprovados automaticamente",
+            )
+            if st.button("Fechar freguesia", key="btn_fechar_freg"):
+                if nova_freguesia.strip():
+                    patch_fecho(API_URL, auth_token, nova_freguesia.strip(), True)
+                    st.rerun()
+                else:
+                    st.error("Indique o nome da freguesia.")
+        except requests.HTTPError as e:
+            st.error(f"Erro ao gerir fechos: {e}")
     
     # Aba 2: Ordem de Fornecimento
     with tab2:
         st.subheader("Ordem de fornecimento por produto")
+        
+        # Obter semana atual
+        from datetime import date as date_class
+        semana_atual = date_class.today().isocalendar()[1]
 
         try:
             fornecedores = list_fornecedores(API_URL, auth_token)
-            ordens = get_ordem(API_URL, auth_token)
+            ordens = get_ordem(API_URL, auth_token, semana_atual)
             
             if ordens:
                 # mapa id -> fornecedor para apresentar nomes e capacidades
@@ -175,20 +264,14 @@ def pagina_gestor(API_URL, auth_token):
                             forn = id_to_fornecedor.get(fid)
                             if forn:
                                 capacidade = None
-                                biologico = False
+                                unidade = "kg"
                                 for p in forn.get('produtos', []):
-                                    pid = p.get('produto_id')
-                                    nome_prod = catalogo_por_id.get(pid, {}).get('nome', '').lower()
-                                    if nome_prod == o['produto'].lower():
+                                    if p.get('nome', '').lower() == o['produto'].lower():
                                         capacidade = p.get('capacidade')
-                                        biologico = p.get('biologico', False)
+                                        unidade = p.get('unidade', 'kg')
                                         break
-                                cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
-                                local_icon = "🏡" if forn.get('local', False) else "❌"
-                                cert_icon = "✅" if forn.get('certificado', False) else "❌"
-                                bio_icon = "🌱" if biologico else "❌"
-                                data_inscricao = forn.get('data_inscricao', 'N/A')
-                                st.write(f"{idx}. **{forn['nome']}** — {cap_text} | Local: {local_icon} | Certificado: {cert_icon} | Biológico: {bio_icon} | Data Inscrição: {data_inscricao}")
+                                cap_text = f"{capacidade} {unidade}" if capacidade is not None else "capacidade desconhecida"
+                                st.write(f"{idx}. {forn['nome']} — {cap_text}")
                             else:
                                 st.write(f"{idx}. {fid} — fornecedor não encontrado")
             else:

@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..db.models import HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM
 
 
@@ -19,8 +20,8 @@ class HistoricoReservasRepo:
         Ex: obter_total_refeicoes("segunda", "almoço") -> 200
         """
         historico = self.session.query(HistoricoRefeicoesDiaORM).filter(
-            HistoricoRefeicoesDiaORM.dia_semana == dia_semana.lower(),
-            HistoricoRefeicoesDiaORM.tipo_refeicao == tipo_refeicao.lower()
+            func.lower(HistoricoRefeicoesDiaORM.dia_semana) == func.lower(dia_semana),
+            func.lower(HistoricoRefeicoesDiaORM.tipo_refeicao) == func.lower(tipo_refeicao)
         ).first()
         
         return historico.total_refeicoes if historico else None
@@ -31,8 +32,8 @@ class HistoricoReservasRepo:
         Retorna: [{"prato": "Frango", "percentual": 0.475, "reservas": 95}, ...]
         """
         historicos = self.session.query(HistoricoReservasPratoORM).filter(
-            HistoricoReservasPratoORM.dia_semana == dia_semana.lower(),
-            HistoricoReservasPratoORM.tipo_refeicao == tipo_refeicao.lower()
+            func.lower(HistoricoReservasPratoORM.dia_semana) == func.lower(dia_semana),
+            func.lower(HistoricoReservasPratoORM.tipo_refeicao) == func.lower(tipo_refeicao)
         ).all()
         
         return [
@@ -45,14 +46,14 @@ class HistoricoReservasRepo:
         ]
     
     def obter_percentual_prato(self, dia_semana: str, tipo_refeicao: str, 
-                               descricao_prato: str) -> Optional[float]:
+                              descricao_prato: str) -> Optional[float]:
         """
         Retorna o % de escolha de um prato específico em um dia/tipo.
         Ex: obter_percentual_prato("segunda", "almoço", "Frango") -> 0.475 (47.5%)
         """
         historico = self.session.query(HistoricoReservasPratoORM).filter(
-            HistoricoReservasPratoORM.dia_semana == dia_semana.lower(),
-            HistoricoReservasPratoORM.tipo_refeicao == tipo_refeicao.lower(),
+            func.lower(HistoricoReservasPratoORM.dia_semana) == func.lower(dia_semana),
+            func.lower(HistoricoReservasPratoORM.tipo_refeicao) == func.lower(tipo_refeicao),
             HistoricoReservasPratoORM.descricao_prato == descricao_prato
         ).first()
         
@@ -65,8 +66,8 @@ class HistoricoReservasRepo:
         Ex: obter_reservas_prato("segunda", "almoço", "Frango grelhado") -> 90
         """
         historico = self.session.query(HistoricoReservasPratoORM).filter(
-            HistoricoReservasPratoORM.dia_semana == dia_semana.lower(),
-            HistoricoReservasPratoORM.tipo_refeicao == tipo_refeicao.lower(),
+            func.lower(HistoricoReservasPratoORM.dia_semana) == func.lower(dia_semana),
+            func.lower(HistoricoReservasPratoORM.tipo_refeicao) == func.lower(tipo_refeicao),
             HistoricoReservasPratoORM.descricao_prato == descricao_prato
         ).first()
         

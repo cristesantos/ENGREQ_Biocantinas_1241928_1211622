@@ -246,7 +246,7 @@ if not st.session_state.auth_token:
         if logo_login_path.exists():
             col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
             with col_logo2:
-                st.image(str(logo_login_path), use_container_width=True)
+                st.image(str(logo_login_path), width='stretch')
         
         st.markdown("<h2 style='text-align: center;'>Bem vindo!</h2>", unsafe_allow_html=True)
         
@@ -254,11 +254,11 @@ if not st.session_state.auth_token:
         col1, col2 = st.columns(2)
         
         with col1:
-            if st.button("🔑 Login", use_container_width=True, type="primary" if not st.session_state.show_register else "secondary"):
+            if st.button("🔑 Login", width='stretch', type="primary" if not st.session_state.show_register else "secondary"):
                 st.session_state.show_register = False
                 st.rerun()
         with col2:
-            if st.button("📝 Registrar", use_container_width=True, type="primary" if st.session_state.show_register else "secondary"):
+            if st.button("📝 Registrar", width='stretch', type="primary" if st.session_state.show_register else "secondary"):
                 st.session_state.show_register = True
                 st.rerun()
         
@@ -279,31 +279,98 @@ if not st.session_state.auth_token:
                 
                 produtor_nome = st.text_input("Nome do Produtor/Empresa", key="produtor_nome")
                 st.caption(f"📅 Data de Inscrição: {date.today().strftime('%Y-%m-%d')}")
-                
-                # Checkboxes para local e certificado
-                st.markdown("### 🏡 Informações do Produtor")
-                col_check1, col_check2 = st.columns(2)
-                with col_check1:
-                    produtor_local = st.checkbox("Sou produtor local", value=False, key="produtor_local", help="Indica se o produtor é da região local")
-                with col_check2:
-                    produtor_certificado = st.checkbox("Tenho certificado agrícola", value=False, key="produtor_certificado", help="Indica se possui certificação agrícola")
-                
-                st.divider()
-                
-                # Buscar catálogo de produtos do backend
-                try:
-                    catalogo_resp = requests.get(f"{API_URL}/produtos-catalogo/")
-                    catalogo_resp.raise_for_status()
-                    catalogo = catalogo_resp.json()
-                except Exception as e:
-                    st.error(f"Erro ao carregar catálogo: {str(e)}")
-                    catalogo = []
 
-                # Mapa id->produto e lista (nome, id) ordenada
-                catalogo_por_id = {p["id"]: p for p in catalogo}
-                nomes_e_ids = [(p.get("nome", ""), p["id"]) for p in catalogo]
-                nomes_e_ids.sort(key=lambda x: x[0].lower())
-                nomes_display = [nome for nome, _ in nomes_e_ids]
+                FREGUESIAS_CINFAES = [
+                    "Alhões",
+                    "Bustelo",
+                    "Cinfães",
+                    "Espadanedo",
+                    "Ferreiros de Tendais",
+                    "Fornelos",
+                    "Freigil e Miomães",
+                    "Moimenta",
+                    "Nespereira",
+                    "Oliveira do Douro",
+                    "Santiago de Piães",
+                    "São Cristóvão de Nogueira",
+                    "Souselo",
+                    "Tarouquela",
+                    "Tendais",
+                    "Travanca",
+                ]
+
+                freg_escolhida = st.selectbox(
+                    "Freguesia (Cinfães)",
+                    options=[""] + FREGUESIAS_CINFAES,
+                    help="Obrigatório para gerir quarentena/fecho sanitário",
+                    key="reg_freguesia",
+                )
+                
+                # Lista fixa de produtos com seus tipos
+                PRODUTOS_DISPONIVEIS = {
+                "Frutas": {
+                    "Maçã": "Fruta",
+                    "Pera": "Fruta",
+                    "Laranja": "Fruta",
+                    "Banana": "Fruta",
+                    "Morango": "Fruta",
+                    "Uva": "Fruta",
+                    "Pêssego": "Fruta",
+                    "Ameixa": "Fruta",
+                    "Melancia": "Fruta",
+                    "Melão": "Fruta"
+                },
+                "Hortícolas": {
+                    "Tomate": "Hortícola",
+                    "Alface": "Hortícola",
+                    "Cenoura": "Hortícola",
+                    "Batata": "Hortícola",
+                    "Cebola": "Hortícola",
+                    "Couve": "Hortícola",
+                    "Brócolos": "Hortícola",
+                    "Pimento": "Hortícola",
+                    "Beringela": "Hortícola",
+                    "Abóbora": "Hortícola",
+                    "Feijão-verde": "Hortícola",
+                    "Espinafre": "Hortícola"
+                },
+                "Proteínas": {
+                    "Frango": "Proteína",
+                    "Carne de Vaca": "Proteína",
+                    "Carne de Porco": "Proteína",
+                    "Peixe": "Proteína",
+                    "Ovos": "Proteína",
+                    "Tofu": "Proteína",
+                    "Grão-de-bico": "Proteína",
+                    "Lentilhas": "Proteína"
+                },
+                "Cereais": {
+                    "Arroz": "Cereais",
+                    "Massa": "Cereais",
+                    "Pão": "Cereais",
+                    "Aveia": "Cereais",
+                    "Quinoa": "Cereais",
+                    "Milho": "Cereais"
+                },
+                "Laticínios": {
+                    "Leite": "Laticínios",
+                    "Queijo": "Laticínios",
+                    "Iogurte": "Laticínios",
+                    "Manteiga": "Laticínios",
+                    "Nata": "Laticínios"
+                },
+                "Outros": {
+                    "Azeite": "Outro",
+                    "Mel": "Outro",
+                    "Ervas Aromáticas": "Outro",
+                    "Especiarias": "Outro"
+                }
+            }
+                
+                # Criar lista plana de produtos
+                todos_produtos = []
+                for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
+                    todos_produtos.extend(produtos.keys())
                 
                 st.markdown("### 🌱 Produtos")
                 num_produtos = st.number_input("Quantos produtos deseja cadastrar?", min_value=1, max_value=10, value=1, key="num_produtos")
@@ -313,42 +380,77 @@ if not st.session_state.auth_token:
                     with st.expander(f"Produto {i+1}", expanded=(i==0)):
                         col1, col2 = st.columns(2)
                         with col1:
-                            opcoes = [""] + nomes_display
                             nome_produto = st.selectbox(
-                                "Selecione o Produto do Catálogo",
-                                opcoes,
+                                "Selecione o Produto", 
+                                [""] + todos_produtos,
                                 key=f"prod_nome_{i}"
                             )
-                            produto_id = None
+                            
+                            # Determinar automaticamente o tipo baseado no produto selecionado
+                            tipo_produto = None
                             if nome_produto:
-                                for n, pid in nomes_e_ids:
-                                    if n == nome_produto:
-                                        produto_id = pid
+                                for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
+                                    if nome_produto in produtos:
+                                        tipo_produto = produtos[nome_produto]
                                         break
-                            # Mostrar tipo do catálogo
-                            if produto_id and produto_id in catalogo_por_id:
-                                tipo_produto = catalogo_por_id[produto_id].get("tipo")
-                                if tipo_produto:
-                                    st.info(f"📦 Tipo: **{tipo_produto}**")
+                            
+                            if tipo_produto:
+                                st.info(f"📦 Tipo: **{tipo_produto}**")
                             
                             biologico = st.checkbox("Produto Biológico", value=True, key=f"prod_bio_{i}")
                         with col2:
-                            capacidade = st.number_input("Capacidade (kg)", min_value=1, value=100, key=f"prod_cap_{i}")
-                            data_inicio = st.date_input("Início da Produção", key=f"prod_inicio_{i}")
-                            data_fim = st.date_input("Fim da Produção", key=f"prod_fim_{i}")
+                            col_cap_unit = st.columns(2)
+                            with col_cap_unit[0]:
+                                capacidade = st.number_input("Capacidade", min_value=1, value=100, key=f"prod_cap_{i}")
+                            with col_cap_unit[1]:
+                                unidade = st.selectbox("Unidade", options=["kg", "L", "unidades", "caixas", "outro"], index=0, key=f"prod_unit_{i}")
+                            
+                            semana_inicio = st.number_input("Semana de Início (1-52)", min_value=1, max_value=52, value=1, key=f"prod_semana_inicio_{i}")
+                            semana_fim = st.number_input("Semana de Fim (1-52)", min_value=1, max_value=52, value=52, key=f"prod_semana_fim_{i}")
                         
-                        if produto_id:
+                        # Seção de certificação (apenas para produtos biológicos)
+                        st.divider()
+                        st.subheader("📜 Certificação")
+                        
+                        if not biologico:
+                            st.caption("⚠️ Certificação é aplicável apenas para produtos biológicos.")
+                        
+                        certificado_texto = st.text_area(
+                            "Informações de Certificação",
+                            placeholder="Ex: Certificado biológico nº XYZ123, válido até 2025-12-31",
+                            height=80,
+                            disabled=not biologico,
+                            key=f"prod_cert_texto_{i}"
+                        )
+                        
+                        arquivo_certificado = st.file_uploader(
+                            "Anexar documento de certificação",
+                            type=["pdf", "jpg", "jpeg", "png", "doc", "docx"],
+                            disabled=not biologico,
+                            key=f"prod_cert_arquivo_{i}"
+                        )
+                        
+                        certificado_info = None
+                        if biologico and (certificado_texto or arquivo_certificado):
+                            certificado_info = certificado_texto
+                            if arquivo_certificado:
+                                certificado_info = f"{certificado_texto}\n[Arquivo: {arquivo_certificado.name}]" if certificado_texto else f"[Arquivo: {arquivo_certificado.name}]"
+                        
+                        if nome_produto and tipo_produto:
                             produtos_list.append({
-                                "produto_id": produto_id,
+                                "nome": nome_produto,
+                                "tipo": tipo_produto,
                                 "biologico": biologico,
                                 "capacidade": capacidade,
-                                "intervalo_producao_inicio": str(data_inicio),
-                                "intervalo_producao_fim": str(data_fim)
+                                "unidade": unidade,
+                                "semana_producao_inicio": int(semana_inicio),
+                                "semana_producao_fim": int(semana_fim),
+                                "certificado": certificado_info
                             })
                 
                 # Botão de criar conta para PRODUTOR (com validação completa)
-                if st.button("Criar conta", use_container_width=True, type="primary"):
-                    if reg_username and reg_password and produtor_nome and len(produtos_list) > 0:
+                if st.button("Criar conta", width='stretch', type="primary"):
+                    if reg_username and reg_password and produtor_nome and len(produtos_list) > 0 and freg_escolhida:
                         try:
                             # 1. Criar usuário
                             user_response = requests.post(
@@ -371,9 +473,8 @@ if not st.session_state.auth_token:
                                     fornecedor_payload = {
                                         "nome": produtor_nome,
                                         "data_inscricao": str(date.today()),
-                                        "local": produtor_local,
-                                        "certificado": produtor_certificado,
-                                        "produtos": produtos_list
+                                        "produtos": produtos_list,
+                                        "freguesia": freg_escolhida,
                                     }
                                     
                                     fornecedor_response = requests.post(
@@ -396,11 +497,11 @@ if not st.session_state.auth_token:
                         except Exception as e:
                             st.error(f"Erro ao finalizar cadastro: {str(e)}")
                     else:
-                        st.error("Preencha todos os campos e selecione ao menos um produto do catálogo!")
+                        st.error("Preencha todos os campos: usuário, senha, nome do produtor, freguesia e pelo menos um produto!")
             
             else:
                 # Para outros papéis (não PRODUTOR), botão simples
-                if st.button("Criar conta", use_container_width=True, type="primary"):
+                if st.button("Criar conta", width='stretch', type="primary"):
                     if reg_username and reg_password:
                         register(reg_username, reg_password, reg_role)
                     else:
@@ -410,7 +511,7 @@ if not st.session_state.auth_token:
             st.subheader("Entrar na conta")
             username = st.text_input("Usuário", key="username")
             password = st.text_input("Senha", type="password", key="password")
-            if st.button("Entrar", use_container_width=True, type="primary"):
+            if st.button("Entrar", width='stretch', type="primary"):
                 if username and password:
                     login(username, password)
                 else:
@@ -425,13 +526,13 @@ if not st.session_state.auth_token:
 # Adicionar logo no sidebar
 logo_path = Path(__file__).parent / "Biocantinas.png"
 if logo_path.exists():
-    st.sidebar.image(str(logo_path), use_container_width=True)
+    st.sidebar.image(str(logo_path), width='stretch')
 
 st.sidebar.divider()
 
 # Criar container para botão logout com fundo vermelho
 col = st.sidebar.container()
-if col.button("🚪 Logout", use_container_width=True, key="logout_btn", type="primary"):
+if col.button("🚪 Logout", width='stretch', key="logout_btn", type="primary"):
     logout()
     st.rerun()
 

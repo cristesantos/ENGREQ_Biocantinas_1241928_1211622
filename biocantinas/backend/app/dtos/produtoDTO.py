@@ -1,99 +1,110 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator, Field
 from datetime import date
-from typing import Optional
 
-# ============ DTOs para Produto (Catálogo Global) ============
-
-class ProdutoCatalogoCreateDTO(BaseModel):
-	"""DTO para criar um produto no catálogo global"""
+class ProdutoFornecedor(BaseModel):
 	nome: str
-	tipo: Optional[str] = None
-	descricao: Optional[str] = None
-	unidade_medida: Optional[str] = None
-	epoca_tipica: Optional[str] = None
-	ativo: bool = True
+	tipo: str | None = None
+	biologico: bool = True
+	semana_producao_inicio: int
+	semana_producao_fim: int
+	capacidade: int
+	unidade: str = "kg"
+	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
+	
+	@field_validator('semana_producao_inicio', 'semana_producao_fim')
+	@classmethod
+	def validar_semanas(cls, v):
+		if not (1 <= v <= 52):
+			raise ValueError('Semana deve estar entre 1 e 52')
+		return v
+	
+	@field_validator('semana_producao_fim')
+	@classmethod
+	def validar_fim_maior_que_inicio(cls, v, info):
+		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
+			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		return v
 
 
-class ProdutoCatalogoUpdateDTO(BaseModel):
-	"""DTO para atualizar um produto do catálogo"""
-	nome: Optional[str] = None
-	tipo: Optional[str] = None
-	descricao: Optional[str] = None
-	unidade_medida: Optional[str] = None
-	epoca_tipica: Optional[str] = None
-	ativo: Optional[bool] = None
-
-
-class ProdutoCatalogoDTO(BaseModel):
-	"""DTO completo de produto do catálogo"""
-	id: int
+class ProdutoCreateDTO(BaseModel):
+	"""DTO para criar um produto individualmente"""
 	nome: str
-	tipo: Optional[str] = None
-	descricao: Optional[str] = None
-	unidade_medida: Optional[str] = None
-	epoca_tipica: Optional[str] = None
-	ativo: bool = True
-
-
-# ============ DTOs para ProdutoFornecedor ============
-
-class ProdutoFornecedorDTO(BaseModel):
-	"""DTO básico para produto de fornecedor"""
-	produto_id: int
-	preco_unitario: Optional[float] = None
+	tipo: str | None = None
+	biologico: bool = True
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
-	unidade_medida: Optional[str] = None
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
-	prioridade: int = 1
-	biologico: bool = False
-	disponivel: bool = True
+	unidade: str = "kg"
+	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
+	
+	@field_validator('semana_producao_inicio', 'semana_producao_fim')
+	@classmethod
+	def validar_semanas(cls, v):
+		if not (1 <= v <= 52):
+			raise ValueError('Semana deve estar entre 1 e 52')
+		return v
+	
+	@field_validator('semana_producao_fim')
+	@classmethod
+	def validar_fim_maior_que_inicio(cls, v, info):
+		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
+			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		return v
 
 
-
-class ProdutoFornecedorCreateDTO(BaseModel):
-	"""DTO para criar um produto de fornecedor"""
-	produto_id: int
-	preco_unitario: Optional[float] = None
+class ProdutoUpdateDTO(BaseModel):
+	"""DTO para atualizar um produto"""
+	nome: str
+	tipo: str | None = None
+	biologico: bool = True
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
-	unidade_medida: Optional[str] = None
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
-	prioridade: int = 1
-	biologico: bool = False
-	disponivel: bool = True
-
-
-
-
-class ProdutoFornecedorUpdateDTO(BaseModel):
-	"""DTO para atualizar um produto de fornecedor"""
-	produto_id: Optional[int] = None
-	preco_unitario: Optional[float] = None
-	capacidade: Optional[int] = None
-	unidade_medida: Optional[str] = None
-	intervalo_producao_inicio: Optional[date] = None
-	intervalo_producao_fim: Optional[date] = None
-	prioridade: Optional[int] = None
-	biologico: Optional[bool] = None
-	disponivel: Optional[bool] = None
-
-
- 
+	unidade: str = "kg"
+	certificado: str | None = None
+	data_inscricao: date = Field(default_factory=date.today)
+	
+	@field_validator('semana_producao_inicio', 'semana_producao_fim')
+	@classmethod
+	def validar_semanas(cls, v):
+		if not (1 <= v <= 52):
+			raise ValueError('Semana deve estar entre 1 e 52')
+		return v
+	
+	@field_validator('semana_producao_fim')
+	@classmethod
+	def validar_fim_maior_que_inicio(cls, v, info):
+		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
+			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		return v
 
 
 class ProdutoDTO(BaseModel):
-	"""DTO completo de produto de fornecedor com informações do catálogo"""
+	"""DTO completo de produto com ID e fornecedor_id"""
 	id: int
 	fornecedor_id: int
-	produto_id: int
-	produto_nome: str  # Nome do produto do catálogo
-	produto_tipo: Optional[str] = None  # Tipo do produto do catálogo
-	preco_unitario: Optional[float] = None
+	nome: str
+	tipo: str | None = None
+	biologico: bool = True
+	semana_producao_inicio: int
+	semana_producao_fim: int
 	capacidade: int
-	unidade_medida: Optional[str] = None
-	intervalo_producao_inicio: date
-	intervalo_producao_fim: date
-	prioridade: int = 1
-	biologico: bool = False
-	disponivel: bool = True
+	unidade: str = "kg"
+	certificado: str | None = None
+	data_inscricao: date
+	
+	@field_validator('semana_producao_inicio', 'semana_producao_fim')
+	@classmethod
+	def validar_semanas(cls, v):
+		if not (1 <= v <= 52):
+			raise ValueError('Semana deve estar entre 1 e 52')
+		return v
+	
+	@field_validator('semana_producao_fim')
+	@classmethod
+	def validar_fim_maior_que_inicio(cls, v, info):
+		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
+			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		return v

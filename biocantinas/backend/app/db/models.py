@@ -10,51 +10,46 @@ class FornecedorORM(Base):
     nome = Column(String, nullable=False)
     data_inscricao = Column(Date, nullable=False)
     aprovado = Column(Boolean, default=False, nullable=False)
-    local = Column(Boolean, default=False, nullable=False)
-    certificado = Column(Boolean, default=False, nullable=False)
     usuario_id = Column(Integer, ForeignKey("utilizadores.id"), nullable=True)  # Vínculo com o usuário
 
     produtos = relationship("ProdutoFornecedorORM", back_populates="fornecedor", cascade="all, delete-orphan")
     usuario = relationship("UserORM", foreign_keys=[usuario_id])
 
 
-class ProdutoORM(Base):
-    """Catálogo global de produtos"""
-    __tablename__ = "produtos"
+class FornecedorEstadoORM(Base):
+    """Estado sanitário e localização básica do fornecedor."""
+    __tablename__ = "fornecedores_estado"
     id = Column(Integer, primary_key=True, autoincrement=True)
-    nome = Column(String, nullable=False, unique=True)
-    tipo = Column(String, nullable=True)  # fruta, hortícola, proteína, etc.
-    descricao = Column(Text, nullable=True)
-    unidade_medida = Column(String, nullable=True)  # kg, unidade, litro, etc.
-    epoca_tipica = Column(String, nullable=True)  # Outono, Inverno, Primavera, Verão
+    fornecedor_id = Column(Integer, ForeignKey("fornecedores.id"), unique=True, nullable=False)
+    em_quarentena = Column(Boolean, default=False, nullable=False)
+    freguesia = Column(String, nullable=True)
+
+    fornecedor = relationship("FornecedorORM")
+
+
+class FreguesiaFechoORM(Base):
+    """Regista fechos sanitários por freguesia."""
+    __tablename__ = "freguesias_fecho"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String, nullable=False)
     ativo = Column(Boolean, default=True, nullable=False)
-
-    # Relação com produtos de fornecedores
-    fornecedores = relationship("ProdutoFornecedorORM", back_populates="produto", cascade="all, delete-orphan")
-
+    __table_args__ = (UniqueConstraint("nome", name="uq_freguesia_nome"),)
 
 class ProdutoFornecedorORM(Base):
-    """Produto de um fornecedor específico (referencia o catálogo global)"""
     __tablename__ = "produtos_fornecedor"
-    __table_args__ = (
-        UniqueConstraint('fornecedor_id', 'produto_id', name='uq_fornecedor_produto'),
-    )
-    
     id = Column(Integer, primary_key=True, autoincrement=True)
     fornecedor_id = Column(Integer, ForeignKey("fornecedores.id"), nullable=False)
-    produto_id = Column(Integer, ForeignKey("produtos.id"), nullable=False)
-    data_inscricao = Column(DateTime, default=datetime.utcnow, nullable=False)
-    preco_unitario = Column(Float, nullable=True)
+    nome = Column(String, nullable=False)
+    tipo = Column(String, nullable=True)  # Categoria do produto: fruta, hortícola, proteína, etc.
+    biologico = Column(Boolean, default=True, nullable=False)  # Indica se o produto é biológico
+    semana_producao_inicio = Column(Integer, nullable=False)  # Semana do ano (1-52)
+    semana_producao_fim = Column(Integer, nullable=False)  # Semana do ano (1-52)
     capacidade = Column(Integer, nullable=False)
-    unidade_medida = Column(String, nullable=True)
-    intervalo_producao_inicio = Column(Date, nullable=False)
-    intervalo_producao_fim = Column(Date, nullable=False)
-    prioridade = Column(Integer, default=1, nullable=False)
-    biologico = Column(Boolean, default=False, nullable=False)
-    disponivel = Column(Boolean, default=True, nullable=False)
+    unidade = Column(String, default="kg", nullable=False)  # Unidade de medida: kg, L, unidade, etc.
+    certificado = Column(String, nullable=True)  # Informação de certificação (texto descritivo)
+    data_inscricao = Column(Date, nullable=False, default=datetime.utcnow)
 
     fornecedor = relationship("FornecedorORM", back_populates="produtos")
-    produto = relationship("ProdutoORM", back_populates="fornecedores")
 
 class UserORM(Base):
     __tablename__ = "utilizadores"
@@ -94,7 +89,7 @@ class ItemRefeicaoORM(Base):
     refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
     produto_id = Column(Integer, ForeignKey("produtos_fornecedor.id"), nullable=True)
     ingrediente = Column(String, nullable=False)
-    quantidade_estimada = Column(Integer, nullable=True)
+    quantidade_estimada = Column(Float, nullable=True)
     
     refeicao = relationship("RefeicaoORM", back_populates="itens")
     produto = relationship("ProdutoFornecedorORM")
