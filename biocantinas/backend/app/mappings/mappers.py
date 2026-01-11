@@ -3,9 +3,11 @@ from datetime import datetime
 from ..dtos.fornecedorDTO import Fornecedor as FornecedorDTO, FornecedorCreate as FornecedorCreateDTO, ProdutoFornecedor as ProdutoFornecedorDTO
 from ..dtos.userDTO import User as UserDTO, UserCreate as UserCreateDTO
 from ..dtos.produtoDTO import ProdutoCatalogoDTO
+from ..dtos.receitaDTO import ReceitaDTO, ReceitaCreateDTO, ReceitaUpdateDTO, ItemReceitaDTO
 from ..models.fornecedor import FornecedorModel
 from ..models.produto import ProdutoFornecedorModel, ProdutoModel
 from ..models.user import UserModel
+from ..models.receita import ReceitaModel, ItemReceitaModel
 from ..db.models import UserORM, ProdutoORM
 
 
@@ -127,3 +129,85 @@ def produto_fornecedor_model_to_dto(model: ProdutoFornecedorModel):
         local=getattr(model, 'local', False),
         disponivel=getattr(model, 'disponivel', True)
     )
+
+
+# Receita mappers
+class ReceitaMapper:
+    """Mapper para conversão entre DTOs e Models de Receitas"""
+    
+    @staticmethod
+    def model_to_dto(model: ReceitaModel) -> ReceitaDTO:
+        """Converte ReceitaModel para ReceitaDTO"""
+        ingredientes = [
+            ItemReceitaDTO(
+                id=ing.id,
+                produto_catalogo_id=ing.produto_catalogo_id,
+                produto_nome=ing.produto_nome,
+                quantidade_por_porcao=ing.quantidade_por_porcao,
+                unidade_medida=ing.unidade_medida
+            )
+            for ing in model.ingredientes
+        ]
+        
+        return ReceitaDTO(
+            id=model.id,
+            nome=model.nome,
+            descricao=model.descricao,
+            tipo_refeicao=model.tipo_refeicao,
+            categoria=model.categoria,
+            porcoes_base=model.porcoes_base,
+            tempo_preparo=model.tempo_preparo,
+            ativa=model.ativa,
+            ingredientes=ingredientes
+        )
+    
+    @staticmethod
+    def dto_create_to_model(dto: ReceitaCreateDTO) -> ReceitaModel:
+        """Converte ReceitaCreateDTO para ReceitaModel"""
+        ingredientes = [
+            ItemReceitaModel(
+                produto_catalogo_id=ing.produto_catalogo_id,
+                produto_nome=ing.produto_nome or "",
+                quantidade_por_porcao=ing.quantidade_por_porcao,
+                unidade_medida=getattr(ing, "unidade_medida", None)
+            )
+            for ing in dto.ingredientes
+        ]
+        
+        return ReceitaModel(
+            nome=dto.nome,
+            descricao=dto.descricao,
+            tipo_refeicao=dto.tipo_refeicao,
+            categoria=dto.categoria,
+            porcoes_base=dto.porcoes_base,
+            tempo_preparo=dto.tempo_preparo,
+            ativa=dto.ativa,
+            ingredientes=ingredientes
+        )
+    
+    @staticmethod
+    def dto_update_to_model(dto: ReceitaUpdateDTO) -> ReceitaModel:
+        """Converte ReceitaUpdateDTO para ReceitaModel"""
+        ingredientes = []
+        if dto.ingredientes:
+            ingredientes = [
+                ItemReceitaModel(
+                    produto_catalogo_id=ing.produto_catalogo_id,
+                    produto_nome=ing.produto_nome or "",
+                    quantidade_por_porcao=ing.quantidade_por_porcao,
+                    unidade_medida=getattr(ing, "unidade_medida", None)
+                )
+                for ing in dto.ingredientes
+            ]
+        
+        return ReceitaModel(
+            nome=dto.nome,
+            descricao=dto.descricao,
+            tipo_refeicao=dto.tipo_refeicao,
+            categoria=dto.categoria,
+            porcoes_base=dto.porcoes_base,
+            tempo_preparo=dto.tempo_preparo,
+            ativa=dto.ativa,
+            ingredientes=ingredientes
+        )
+

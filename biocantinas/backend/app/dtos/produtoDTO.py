@@ -22,8 +22,14 @@ class ProdutoFornecedor(BaseModel):
 	@field_validator('semana_producao_fim')
 	@classmethod
 	def validar_fim_maior_que_inicio(cls, v, info):
-		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
-			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		if 'semana_producao_inicio' in info.data:
+			inicio = info.data['semana_producao_inicio']
+			# Permitir intervalos circulares (ex.: 11-9) para bloquear semana(s) específicas no ano
+			if inicio is None:
+				return v
+			# Se inicio <= fim, permanece a validação natural; se inicio > fim, aceitar como faixa circular
+			if inicio <= v or inicio > v:
+				return v
 		return v
 
 
@@ -49,8 +55,13 @@ class ProdutoCreateDTO(BaseModel):
 	@field_validator('semana_producao_fim')
 	@classmethod
 	def validar_fim_maior_que_inicio(cls, v, info):
-		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
-			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		if 'semana_producao_inicio' in info.data:
+			inicio = info.data['semana_producao_inicio']
+			# Permitir intervalos circulares (ex.: 11-9) para bloquear semana(s) específicas no ano
+			if inicio is None:
+				return v
+			if inicio <= v or inicio > v:
+				return v
 		return v
 
 
@@ -76,8 +87,13 @@ class ProdutoUpdateDTO(BaseModel):
 	@field_validator('semana_producao_fim')
 	@classmethod
 	def validar_fim_maior_que_inicio(cls, v, info):
-		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
-			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		if 'semana_producao_inicio' in info.data:
+			inicio = info.data['semana_producao_inicio']
+			# Permitir intervalos circulares (ex.: 11-9) para bloquear semana(s) específicas no ano
+			if inicio is None:
+				return v
+			if inicio <= v or inicio > v:
+				return v
 		return v
 
 
@@ -105,8 +121,13 @@ class ProdutoDTO(BaseModel):
 	@field_validator('semana_producao_fim')
 	@classmethod
 	def validar_fim_maior_que_inicio(cls, v, info):
-		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
-			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		if 'semana_producao_inicio' in info.data:
+			inicio = info.data['semana_producao_inicio']
+			# Permitir intervalos circulares (ex.: 11-9) para bloquear semana(s) específicas no ano
+			if inicio is None:
+				return v
+			if inicio <= v or inicio > v:
+				return v
 		return v
 
 

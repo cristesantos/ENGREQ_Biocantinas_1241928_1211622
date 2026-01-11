@@ -568,6 +568,10 @@ if user_role == "GESTOR_CANTINA":
 if user_role == "DIETISTA":
     paginas_disponiveis.append("Dietista")
 
+# Catálogo de Receitas disponível apenas para Dietista
+if user_role == "DIETISTA":
+    paginas_disponiveis.append("Catálogo de Receitas")
+
 # Se não houver páginas específicas, mostrar página inicial
 if not paginas_disponiveis:
     paginas_disponiveis.append("Página inicial")
@@ -602,6 +606,10 @@ elif pagina == "Gestor Cantina" and str(st.session_state.user_info.get("role", "
 elif pagina == "Dietista" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
     from pagina_dietista import pagina_dietista
     pagina_dietista(API_URL, st.session_state.auth_token)
+
+elif pagina == "Catálogo de Receitas" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
+    from pagina_gestao_receitas import pagina_gestao_receitas
+    pagina_gestao_receitas(API_URL, st.session_state.auth_token)
 
 else:
     st.error("Acesso negado: você não tem permissão para acessar esta página.")

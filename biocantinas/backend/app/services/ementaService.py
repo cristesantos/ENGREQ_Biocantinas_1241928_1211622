@@ -6,6 +6,7 @@ from ..models.ementa import EmentaModel, RefeicaoModel, ItemRefeicaoModel
 from ..db.session import SessionLocal, init_db
 from ..repositories.ementaRepo import EmentaRepo
 from ..repositories.fornecedorRepo import FornecedorRepo
+from ..repositories.receitaRepo import ReceitaRepository
 
 
 class EmentaService:
@@ -14,6 +15,7 @@ class EmentaService:
         self.session = SessionLocal()
         self.repo = EmentaRepo(self.session)
         self.fornecedor_repo = FornecedorRepo(self.session)
+        self.receita_repo = ReceitaRepository(self.session)
 
     def criar_ementa(self, data: EmentaCreateDTO) -> EmentaDTO:
         model = self._dto_to_model_create(data, new_id=0)
@@ -38,11 +40,13 @@ class EmentaService:
     def gerar_ementa_automatica(self, data_inicio: date, nome: str | None = None) -> EmentaDTO:
         """
         Gera uma ementa semanal automática (5 dias úteis, 2 refeições/dia)
-        baseada nos produtos disponíveis em stock dos fornecedores aprovados.
+        baseada nas RECEITAS do catálogo que podem ser feitas com produtos disponíveis.
         
         Restrições:
         - A ementa deve começar numa segunda-feira
         - Deve ser criada com pelo menos 7 dias de antecedência
+        - Usa receitas do catálogo que têm ingredientes disponíveis
+        - Considera a sazonalidade dos produtos (semana_producao_inicio/fim)
         """
         from datetime import datetime
         
@@ -62,16 +66,46 @@ class EmentaService:
         if not nome:
             nome = f"Ementa {data_inicio.strftime('%d/%m/%Y')} - {data_fim.strftime('%d/%m/%Y')}"
         
-        # Obter produtos disponíveis por tipo
-        produtos_por_tipo = self._obter_produtos_stock()
+        # Calcular semana do ano para verificar produtos sazonais
+        semana_ementa = data_inicio.isocalendar()[1]
+        
+        # Obter produtos disponíveis PARA ESSA SEMANA específica
+        produtos_disponiveis = self._obter_produtos_disponiveis_dict(semana_ementa)
+        
+        # Obter receitas disponíveis (que podem ser feitas com os produtos)
+        receitas_almoco = self.receita_repo.listar_receitas_por_tipo("almoço")
+        receitas_jantar = self.receita_repo.listar_receitas_por_tipo("jantar")
+        
+        # Filtrar receitas que têm todos os ingredientes disponíveis
+        receitas_almoco_viaveis = [r for r in receitas_almoco if r.verifica_disponibilidade(produtos_disponiveis)]
+        receitas_jantar_viaveis = [r for r in receitas_jantar if r.verifica_disponibilidade(produtos_disponiveis)]
+        
+        if not receitas_almoco_viaveis or not receitas_jantar_viaveis:
+            raise ValueError("Não há receitas suficientes com os produtos disponíveis para gerar a ementa")
         
         # Gerar refeições
         refeicoes = []
+        receitas_usadas_almoco = set()
+        receitas_usadas_jantar = set()
+        
         for dia in range(1, 6):  # Segunda a Sexta
-            # Almoço
-            refeicoes.append(self._gerar_refeicao(dia, "almoço", produtos_por_tipo))
-            # Jantar
-            refeicoes.append(self._gerar_refeicao(dia, "jantar", produtos_por_tipo))
+            # Almoço - escolher receita diferente a cada dia
+            receita_almoco = self._escolher_receita_unica(
+                receitas_almoco_viaveis, 
+                receitas_usadas_almoco
+            )
+            if receita_almoco:
+                receitas_usadas_almoco.add(receita_almoco.id)
+                refeicoes.append(self._criar_refeicao_de_receita(dia, "almoço", receita_almoco))
+            
+            # Jantar - escolher receita diferente a cada dia
+            receita_jantar = self._escolher_receita_unica(
+                receitas_jantar_viaveis,
+                receitas_usadas_jantar
+            )
+            if receita_jantar:
+                receitas_usadas_jantar.add(receita_jantar.id)
+                refeicoes.append(self._criar_refeicao_de_receita(dia, "jantar", receita_jantar))
         
         # Criar modelo
         model = EmentaModel(
@@ -84,6 +118,73 @@ class EmentaService:
         
         stored = self.repo.criar_ementa(model)
         return self._model_to_dto(stored)
+
+    def _obter_produtos_disponiveis_dict(self, semana_ano: int) -> dict:
+        """
+        Retorna dicionário com produtos disponíveis {nome: True}
+        Considera apenas produtos sazonais disponíveis na semana especificada
+        
+        Args:
+            semana_ano: Semana do ano (1-52) para verificar disponibilidade
+        """
+        fornecedores = self.fornecedor_repo.listar_fornecedores()
+        aprovados = [f for f in fornecedores if f.aprovado]
+        
+        produtos_disponiveis = {}
+        for f in aprovados:
+            for p in f.produtos:
+                # Verificar se o produto está em temporada nesta semana
+                inicio = p.semana_producao_inicio
+                fim = p.semana_producao_fim
+                
+                # Lidar com sazonalidade que atravessa o ano novo (ex: semana 50 a semana 10)
+                if inicio <= fim:
+                    # Período contínuo dentro do mesmo ano
+                    produto_disponivel = inicio <= semana_ano <= fim
+                else:
+                    # Período que atravessa o ano novo (ex: 48-52 e 1-10)
+                    produto_disponivel = semana_ano >= inicio or semana_ano <= fim
+                
+                if produto_disponivel:
+                    produtos_disponiveis[p.nome.lower()] = True
+        
+        return produtos_disponiveis
+    
+    def _escolher_receita_unica(self, receitas_disponiveis, receitas_usadas):
+        """Escolhe uma receita que ainda não foi usada"""
+        receitas_nao_usadas = [r for r in receitas_disponiveis if r.id not in receitas_usadas]
+        
+        # Se todas foram usadas, permitir reutilização
+        if not receitas_nao_usadas:
+            receitas_nao_usadas = receitas_disponiveis
+        
+        return choice(receitas_nao_usadas) if receitas_nao_usadas else None
+    
+    def _criar_refeicao_de_receita(self, dia_semana: int, tipo: str, receita) -> RefeicaoModel:
+        """Cria uma RefeicaoModel a partir de uma receita do catálogo.
+        
+        As quantidades vêm da receita tal qual — sem multiplicação.
+        A receita do catálogo já define as quantidades finais para aquela refeição.
+        """
+        # Usar ingredientes da receita diretamente (sem factor de porções)
+        itens = [
+            ItemRefeicaoModel(
+                ingrediente=ing.produto_nome,
+                produto_id=None,
+                quantidade_estimada=ing.quantidade_por_porcao,
+                unidade_medida=ing.unidade_medida
+            )
+            for ing in receita.ingredientes
+        ]
+        
+        return RefeicaoModel(
+            dia_semana=dia_semana,
+            tipo=tipo,
+            descricao=receita.nome,
+            itens=itens,
+            receita_id=receita.id,
+            numero_porcoes=None
+        )
 
     def _obter_produtos_stock(self) -> dict:
         """Organiza produtos aprovados por tipo"""
@@ -190,11 +291,14 @@ class EmentaService:
                 dia_semana=r.dia_semana,
                 tipo=r.tipo,
                 descricao=r.descricao,
+                receita_id=r.receita_id,
+                numero_porcoes=r.numero_porcoes,
                 itens=[
                     ItemRefeicaoModel(
                         produto_id=i.produto_id,
                         ingrediente=i.ingrediente,
-                        quantidade_estimada=i.quantidade_estimada
+                        quantidade_estimada=i.quantidade_estimada,
+                        unidade_medida=i.unidade_medida
                     )
                     for i in r.itens
                 ]
@@ -216,11 +320,14 @@ class EmentaService:
                 dia_semana=r.dia_semana,
                 tipo=r.tipo,
                 descricao=r.descricao,
+                receita_id=r.receita_id,
+                numero_porcoes=r.numero_porcoes,
                 itens=[
                     ItemRefeicaoDTO(
                         produto_id=i.produto_id,
                         ingrediente=i.ingrediente,
-                        quantidade_estimada=float(i.quantidade_estimada) if i.quantidade_estimada is not None else None
+                        quantidade_estimada=float(i.quantidade_estimada) if i.quantidade_estimada is not None else None,
+                        unidade_medida=i.unidade_medida
                     )
                     for i in r.itens
                 ]

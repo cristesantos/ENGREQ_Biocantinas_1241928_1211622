@@ -5,82 +5,6 @@ from datetime import date, timedelta
 def pagina_dietista(API_URL, auth_token):
     st.header("Painel do Dietista")
 
-    st.subheader("Produtos disponíveis em stock")
-
-    # Listar fornecedores aprovados e seus produtos
-    try:
-        headers = {"Authorization": f"Bearer {auth_token}"}
-        r = requests.get(f"{API_URL}/fornecedores", headers=headers)
-        if r.status_code == 200:
-            fornecedores = r.json()
-            aprovados = [f for f in fornecedores if f.get("aprovado")]
-            
-            if aprovados:
-                # Agregar produtos por categoria (tipo)
-                produtos_por_categoria = {}
-                for fornecedor in aprovados:
-                    for produto in fornecedor.get("produtos", []):
-                        tipo = produto.get("tipo") or "Sem categoria"
-                        nome_produto = produto.get("nome", "Desconhecido")
-                        
-                        if tipo not in produtos_por_categoria:
-                            produtos_por_categoria[tipo] = {}
-                        
-                        if nome_produto not in produtos_por_categoria[tipo]:
-                            produtos_por_categoria[tipo][nome_produto] = []
-                        
-                        produtos_por_categoria[tipo][nome_produto].append({
-                            "fornecedor": fornecedor.get("nome"),
-                            "capacidade": produto.get("capacidade", 0),
-                            "inicio": produto.get("intervalo_producao_inicio"),
-                            "fim": produto.get("intervalo_producao_fim")
-                        })
-                
-                if produtos_por_categoria:
-                    st.write(f"Total de categorias: **{len(produtos_por_categoria)}**")
-                    
-                    # Ícones por tipo
-                    icones_tipo = {
-                        "fruta": "🍎",
-                        "hortícola-folha": "🥬",
-                        "hortícola-fruto": "🍅",
-                        "tubérculo": "🥕",
-                        "proteína": "🥩",
-                        "especial": "🍯",
-                        "condimento": "🧄",
-                        "aromático": "🌿"
-                    }
-                    
-                    # Mostrar produtos organizados por tipo/categoria
-                    for tipo in sorted(produtos_por_categoria.keys()):
-                        icone = icones_tipo.get(tipo, "📦")
-                        produtos_desta_categoria = produtos_por_categoria[tipo]
-                        total_produtos = len(produtos_desta_categoria)
-                        tipo_titulo = tipo.title() if tipo else "Sem Categoria"
-                        
-                        with st.expander(f"{icone} {tipo_titulo} ({total_produtos} produtos)"):
-                            for produto_nome in sorted(produtos_desta_categoria.keys()):
-                                fornecedores_info = produtos_desta_categoria[produto_nome]
-                                total_capacidade = sum(f["capacidade"] for f in fornecedores_info)
-                                produto_titulo = produto_nome.title() if produto_nome else "Desconhecido"
-                                
-                                st.markdown(f"**{produto_titulo}** — {total_capacidade} kg disponíveis")
-                                
-                                for info in fornecedores_info:
-                                    st.write(f"  • {info['fornecedor']}: {info['capacidade']} kg")
-                                st.write("")  # Espaçamento
-                else:
-                    st.info("Nenhum produto encontrado nos fornecedores aprovados.")
-            else:
-                st.info("Nenhum fornecedor aprovado no sistema.")
-        else:
-            st.warning("Não foi possível carregar fornecedores.")
-    except Exception as e:
-        st.error(f"Erro ao carregar dados: {e}")
-
-    st.subheader("Planeamento nutricional")
-    st.info("Aqui poderá planear menus com base nos produtos disponíveis acima.")
-
     headers = {"Authorization": f"Bearer {auth_token}"}
 
     st.subheader("Gerar ementa automática")
@@ -194,13 +118,14 @@ def _render_ementa(ementa: dict, API_URL: str | None = None, headers: dict | Non
             for item in itens:
                 nome = item.get("ingrediente")
                 qtd = item.get("quantidade_estimada")
-                st.write(f"  • {nome} — {qtd} kg")
+                unidade = item.get("unidade_medida") or "kg"
+                st.write(f"  • {nome} — {qtd} {unidade}")
             refeicoes_ordenadas.append(refeicao)
 
-    # Bloco de edição detalhada
+    # Bloco de edição detalhada com seleção de receita
     if API_URL and headers:
         st.markdown("---")
-        st.markdown("**Editar ementa (refeições e itens)**")
+        st.markdown("**Editar ementa (selecionando receitas do catálogo)**")
         nome_default = ementa.get("nome", "")
         data_inicio_default = ementa.get("data_inicio")
         data_fim_default = ementa.get("data_fim")
@@ -211,6 +136,26 @@ def _render_ementa(ementa: dict, API_URL: str | None = None, headers: dict | Non
             data_inicio_default = date.today()
             data_fim_default = data_inicio_default
 
+        # Determinar semana ISO para filtrar receitas disponíveis
+        semana_ementa = data_inicio_default.isocalendar()[1]
+
+        # Carregar receitas disponíveis para a semana
+        receitas_disponiveis = []
+        try:
+            resp_rec = requests.get(
+                f"{API_URL}/receitas/disponiveis",
+                params={"semana": semana_ementa},
+                headers=headers,
+            )
+            if resp_rec.status_code == 200:
+                receitas_disponiveis = resp_rec.json()
+            else:
+                st.warning("Não foi possível carregar receitas disponíveis para a semana.")
+        except Exception as e:
+            st.error(f"Erro ao carregar receitas disponíveis: {e}")
+
+        receitas_por_id = {r["id"]: r for r in receitas_disponiveis}
+
         col1, col2 = st.columns([2, 1])
         novo_nome = col1.text_input("Nome", value=nome_default, key=f"nome_edit_{idx_render}_{ementa.get('id')}")
         nova_data_inicio = col2.date_input("Data início", value=data_inicio_default, key=f"datai_edit_{idx_render}_{ementa.get('id')}")
@@ -219,58 +164,76 @@ def _render_ementa(ementa: dict, API_URL: str | None = None, headers: dict | Non
         edited_refeicoes = []
         for idx, refeicao in enumerate(refeicoes_ordenadas):
             st.markdown(f"**{refeicao.get('tipo','').title()} - Dia {refeicao.get('dia_semana')}**")
-            desc = st.text_input(
-                "Descrição",
-                value=refeicao.get("descricao", ""),
-                key=f"desc_{idx_render}_{ementa.get('id')}_{idx}"
-            )
 
-            edited_itens = []
-            itens = refeicao.get("itens", [])
-            for item_idx, item in enumerate(itens):
-                col_i1, col_i2 = st.columns([3, 1])
-                ing = col_i1.text_input(
-                    "Ingrediente",
-                    value=item.get("ingrediente", ""),
-                    key=f"ing_{idx_render}_{ementa.get('id')}_{idx}_{item_idx}"
-                )
-                qtd = col_i2.number_input(
-                    "Qtd (kg)",
-                    min_value=0,
-                    value=int(item.get("quantidade_estimada") or 0),
-                    key=f"qtd_{idx_render}_{ementa.get('id')}_{idx}_{item_idx}"
-                )
-                edited_itens.append({
-                    "produto_id": item.get("produto_id"),
-                    "ingrediente": ing,
-                    "quantidade_estimada": int(qtd)
-                })
+            # Filtrar receitas pelo tipo
+            tipo_ref = refeicao.get("tipo")
+            receitas_tipo = [r for r in receitas_disponiveis if r.get("tipo_refeicao") in [tipo_ref, "ambos"]]
+            receita_atual_id = refeicao.get("receita_id")
 
-            # Novo item opcional
-            col_n1, col_n2 = st.columns([3, 1])
-            novo_ing = col_n1.text_input(
-                "Novo ingrediente (opcional)",
-                value="",
-                key=f"novo_ing_{idx_render}_{ementa.get('id')}_{idx}"
-            )
-            novo_qtd = col_n2.number_input(
-                "Qtd nova (kg)",
-                min_value=0,
-                value=0,
-                key=f"novo_qtd_{idx_render}_{ementa.get('id')}_{idx}"
-            )
-            if novo_ing:
-                edited_itens.append({
-                    "produto_id": None,
-                    "ingrediente": novo_ing,
-                    "quantidade_estimada": int(novo_qtd)
-                })
+            # Se a receita atual não estiver na lista de disponíveis, adicionar opção e avisar
+            receita_atual_obj = None
+            if receita_atual_id:
+                receita_atual_obj = next((r for r in receitas_disponiveis if r.get("id") == receita_atual_id), None)
+                if not receita_atual_obj and refeicao.get("descricao"):
+                    receitas_tipo.append({
+                        "id": receita_atual_id,
+                        "nome": refeicao.get("descricao"),
+                        "categoria": "(fora da disponibilidade)",
+                        "tipo_refeicao": tipo_ref,
+                        "ingredientes": refeicao.get("itens", []),
+                    })
+                    st.warning("A receita atualmente selecionada não está disponível para esta semana. Escolha outra receita ou mantenha ciente da indisponibilidade.")
+
+            options = {f"{r['nome']} ({r.get('categoria','')})": r["id"] for r in receitas_tipo}
+            label_default = None
+            if receita_atual_id and receita_atual_id in options.values():
+                for k, v in options.items():
+                    if v == receita_atual_id:
+                        label_default = k
+                        break
+
+            selected_label = st.selectbox(
+                "Receita",
+                list(options.keys()) or ["Nenhuma receita disponível para o tipo"],
+                index=list(options.keys()).index(label_default) if label_default else 0,
+                key=f"rec_sel_{idx_render}_{ementa.get('id')}_{idx}"
+            ) if options else None
+
+            receita_escolhida = receitas_por_id.get(options[selected_label]) if (options and selected_label) else None
+
+            itens_finais = []
+            desc = refeicao.get("descricao", "")
+            if receita_escolhida:
+                desc = receita_escolhida.get("nome", desc)
+                for ing in receita_escolhida.get("ingredientes", []):
+                    unidade = ing.get("unidade_medida") or "kg"
+                    qty = ing.get("quantidade_por_porcao") or 0
+                    itens_finais.append({
+                        "produto_id": None,
+                        "ingrediente": ing.get("produto_nome"),
+                        "quantidade_estimada": qty,
+                        "unidade_medida": unidade
+                    })
+            else:
+                # fallback aos itens atuais
+                for item in refeicao.get("itens", []):
+                    itens_finais.append({
+                        "produto_id": item.get("produto_id"),
+                        "ingrediente": item.get("ingrediente"),
+                        "quantidade_estimada": item.get("quantidade_estimada"),
+                        "unidade_medida": item.get("unidade_medida")
+                    })
+
+            st.caption("Ingredientes (quantidades finais da receita)")
+            for item in itens_finais:
+                st.write(f"  • {item['ingrediente']}: {item['quantidade_estimada']} {item.get('unidade_medida') or 'kg'}")
 
             edited_refeicoes.append({
                 "dia_semana": refeicao.get("dia_semana"),
                 "tipo": refeicao.get("tipo"),
                 "descricao": desc,
-                "itens": edited_itens,
+                "itens": itens_finais,
+                "receita_id": receita_escolhida.get("id") if receita_escolhida else None,
             })
 
         if st.button("Guardar alteração", key=f"save_{idx_render}_{ementa.get('id')}"):

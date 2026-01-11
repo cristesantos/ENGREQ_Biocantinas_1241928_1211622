@@ -151,7 +151,9 @@ def pagina_gestor_cantina(API_URL, auth_token):
                         ementa_html += f"<i>{refeicao['descricao']}</i></p>"
                         ementa_html += "<ul style='margin: 2px 0 8px 0; padding-left: 20px;'>"
                         for ing in refeicao['ingredientes']:
-                            ementa_html += f"<li>{ing['ingrediente']}: {ing.get('quantidade_estimada', ing.get('quantidade', 0))} kg</li>"
+                            unidade = ing.get('unidade_medida') or "kg"
+                            quantidade = ing.get('quantidade_estimada', ing.get('quantidade', 0))
+                            ementa_html += f"<li>{ing['ingrediente']}: {quantidade} {unidade}</li>"
                         ementa_html += "</ul><hr style='margin: 4px 0;'>"
                     ementa_html += "</div>"
                     st.markdown(ementa_html, unsafe_allow_html=True)
@@ -442,7 +444,8 @@ def pagina_gestor_cantina(API_URL, auth_token):
                                 if ref.get('ingredientes'):
                                     st.write("**Ingredientes:**")
                                     for ing in ref['ingredientes']:
-                                        st.write(f"  • {ing['ingrediente']}: {ing['quantidade_estimada']} unidades")
+                                        unidade = ing.get('unidade_medida') or "kg"
+                                        st.write(f"  • {ing['ingrediente']}: {ing['quantidade_estimada']} {unidade}")
                         
                         with col_qtd:
                             st.markdown(f"<div style='display: flex; align-items: center; justify-content: center; height: 48px; font-size: 20px; font-weight: bold;'>{qtd_produzir}</div>", unsafe_allow_html=True)

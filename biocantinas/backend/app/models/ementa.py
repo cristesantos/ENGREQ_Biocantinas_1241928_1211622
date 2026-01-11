@@ -8,6 +8,7 @@ class ItemRefeicaoModel:
     ingrediente: str
     produto_id: int | None = None
     quantidade_estimada: float | None = None
+    unidade_medida: str | None = None
 
 
 @dataclass
@@ -16,6 +17,8 @@ class RefeicaoModel:
     tipo: str  # "almoço" ou "jantar"
     descricao: str | None = None
     itens: List[ItemRefeicaoModel] = field(default_factory=list)
+    receita_id: int | None = None  # Referência à receita do catálogo
+    numero_porcoes: int | None = None  # Número de porções planejadas
 
 
 @dataclass

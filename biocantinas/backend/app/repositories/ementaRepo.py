@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import date
 from sqlalchemy.orm import Session
-from ..db.models import EmentaORM, RefeicaoORM, ItemRefeicaoORM
+from ..db.models import EmentaORM, RefeicaoORM, ItemRefeicaoORM, ProdutoORM
 from ..models.ementa import EmentaModel, RefeicaoModel, ItemRefeicaoModel
 
 
@@ -23,6 +23,8 @@ class EmentaRepo:
                 dia_semana=ref.dia_semana,
                 tipo=ref.tipo,
                 descricao=ref.descricao,
+                receita_id=ref.receita_id,
+                numero_porcoes=ref.numero_porcoes,
             )
             
             # Criar itens da refeição
@@ -72,6 +74,8 @@ class EmentaRepo:
                 dia_semana=ref.dia_semana,
                 tipo=ref.tipo,
                 descricao=ref.descricao,
+                receita_id=ref.receita_id,
+                numero_porcoes=ref.numero_porcoes,
             )
             
             refeicao_orm.itens = [
@@ -113,20 +117,34 @@ class EmentaRepo:
     def _to_model(self, orm: EmentaORM) -> EmentaModel:
         refeicoes = []
         for ref_orm in orm.refeicoes:
-            itens = [
-                ItemRefeicaoModel(
-                    produto_id=item.produto_id,
-                    ingrediente=item.ingrediente,
-                    quantidade_estimada=item.quantidade_estimada,
+            itens = []
+            for item in ref_orm.itens:
+                unidade = None
+                # Preferir unidade do produto do fornecedor, quando houver vínculo
+                if item.produto and getattr(item.produto, "unidade_medida", None):
+                    unidade = item.produto.unidade_medida
+                else:
+                    # Procurar no catálogo global pelo nome do ingrediente
+                    prod_cat = self.session.query(ProdutoORM).filter(ProdutoORM.nome.ilike(item.ingrediente)).first()
+                    if prod_cat and prod_cat.unidade_medida:
+                        unidade = prod_cat.unidade_medida
+
+                itens.append(
+                    ItemRefeicaoModel(
+                        produto_id=item.produto_id,
+                        ingrediente=item.ingrediente,
+                        quantidade_estimada=item.quantidade_estimada,
+                        unidade_medida=unidade,
+                    )
                 )
-                for item in ref_orm.itens
-            ]
             
             refeicoes.append(RefeicaoModel(
                 dia_semana=ref_orm.dia_semana,
                 tipo=ref_orm.tipo,
                 descricao=ref_orm.descricao,
                 itens=itens,
+                receita_id=ref_orm.receita_id,
+                numero_porcoes=ref_orm.numero_porcoes,
             ))
         
         return EmentaModel(

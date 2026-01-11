@@ -12,7 +12,8 @@ from biocantinas.backend.app.db.session import SessionLocal, engine, init_db
 from biocantinas.backend.app.db.models import (
     Base, UserORM, FornecedorORM, FornecedorEstadoORM, ProdutoORM, ProdutoFornecedorORM, 
     EmentaORM, RefeicaoORM, ItemRefeicaoORM, ReservaRefeicaoORM,
-    HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM, ExecucaoRefeicaoORM
+    HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM, ExecucaoRefeicaoORM,
+    ReceitaORM, ItemReceitaORM
 )
 from biocantinas.backend.app.models.catalogo_produtos import CATALOGO_PRODUTOS
 from passlib.context import CryptContext
@@ -48,101 +49,27 @@ def delete_database(db_url: str):
         else:
             print(f"No database found at {path}")
 
+
 def create_users(session):
     """Criar usuários do sistema"""
     print("\n👤 Criando usuários...")
     
     users = [
-        UserORM(
-            username="gestor",
-            hashed_password=pwd_context.hash("1"),
-            role="GESTOR_CANTINA",
-            is_active=True
-        ),
-        UserORM(
-            username="dietista",
-            hashed_password=pwd_context.hash("1"),
-            role="DIETISTA",
-            is_active=True
-        ),
-        UserORM(
-            username="aluno1",
-            hashed_password=pwd_context.hash("1"),
-            role="ALUNO",
-            is_active=True
-        ),
-        UserORM(
-            username="aluno2",
-            hashed_password=pwd_context.hash("1"),
-            role="ALUNO",
-            is_active=True
-        ),
-        UserORM(
-            username="joao",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="maria",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="pedro",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="ana",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="carlos",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="lucas",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="rita",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="miguel",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="sofia",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="bruno",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
-        UserORM(
-            username="carla",
-            hashed_password=pwd_context.hash("1"),
-            role="PRODUTOR",
-            is_active=True
-        ),
+        UserORM(username="gestor", hashed_password=pwd_context.hash("1"), role="GESTOR_CANTINA", is_active=True),
+        UserORM(username="dietista", hashed_password=pwd_context.hash("1"), role="DIETISTA", is_active=True),
+        UserORM(username="aluno1", hashed_password=pwd_context.hash("1"), role="ALUNO", is_active=True),
+        UserORM(username="aluno2", hashed_password=pwd_context.hash("1"), role="ALUNO", is_active=True),
+        UserORM(username="joao", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="maria", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="pedro", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="ana", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="carlos", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="lucas", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="rita", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="miguel", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="sofia", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="bruno", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
+        UserORM(username="carla", hashed_password=pwd_context.hash("1"), role="PRODUTOR", is_active=True),
     ]
     
     for user in users:
@@ -153,10 +80,10 @@ def create_users(session):
     # Return users for linking with suppliers
     return {user.username: user.id for user in users}
 
+
 def create_fornecedores(session, user_ids):
     """Criar fornecedores e seus produtos com unidades coerentes"""
     print("\n🚜 Criando fornecedores...")
-    
     today = date.today()
     
     # Fornecedores vinculados aos usuários produtores via usuario_id
@@ -190,7 +117,7 @@ def create_fornecedores(session, user_ids):
             "produtos": [
                 {"nome": "Tomate", "semana_inicio": 20, "semana_fim": 43, "capacidade": 180, "unidade": "kg", "biologico": True},
                 {"nome": "Alface", "semana_inicio": 15, "semana_fim": 50, "capacidade": 100, "unidade": "kg", "biologico": True},
-                {"nome": "Cenoura", "semana_inicio": 1, "semana_fim": 52, "capacidade": 140, "unidade": "kg", "biologico": True},
+                {"nome": "Cenoura", "semana_inicio": 11, "semana_fim": 9, "capacidade": 140, "unidade": "kg", "biologico": True},
                 {"nome": "Couve", "semana_inicio": 15, "semana_fim": 50, "capacidade": 90, "unidade": "kg", "biologico": True},
                 {"nome": "Beterraba", "semana_inicio": 25, "semana_fim": 48, "capacidade": 110, "unidade": "kg", "biologico": True},
             ]
@@ -205,8 +132,8 @@ def create_fornecedores(session, user_ids):
             "certificado": True,
             "freguesia": "Souselo",
             "produtos": [
-                {"nome": "Frango", "semana_inicio": 1, "semana_fim": 52, "capacidade": 200, "unidade": "kg", "biologico": True},
-                {"nome": "Ovos", "semana_inicio": 1, "semana_fim": 52, "capacidade": 300, "unidade": "unidades", "biologico": True},
+                {"nome": "Frango", "semana_inicio": 11, "semana_fim": 9, "capacidade": 200, "unidade": "kg", "biologico": True},
+                {"nome": "Ovos", "semana_inicio": 11, "semana_fim": 9, "capacidade": 300, "unidade": "unidades", "biologico": True},
             ]
         },
         # Ana - Laticínios (L, kg)
@@ -219,8 +146,8 @@ def create_fornecedores(session, user_ids):
             "certificado": True,
             "freguesia": "Travanca",
             "produtos": [
-                {"nome": "Leite", "semana_inicio": 1, "semana_fim": 52, "capacidade": 300, "unidade": "L", "biologico": True},
-                {"nome": "Queijo", "semana_inicio": 1, "semana_fim": 52, "capacidade": 40, "unidade": "kg", "biologico": True},
+                {"nome": "Leite", "semana_inicio": 11, "semana_fim": 9, "capacidade": 300, "unidade": "L", "biologico": True},
+                {"nome": "Queijo", "semana_inicio": 11, "semana_fim": 9, "capacidade": 40, "unidade": "kg", "biologico": True},
                 {"nome": "Iogurte", "semana_inicio": 1, "semana_fim": 52, "capacidade": 150, "unidade": "L", "biologico": True},
             ]
         },
@@ -234,8 +161,8 @@ def create_fornecedores(session, user_ids):
             "certificado": False,
             "freguesia": "Bustelo",
             "produtos": [
-                {"nome": "Carne de Vaca", "semana_inicio": 1, "semana_fim": 52, "capacidade": 120, "unidade": "kg", "biologico": True},
-                {"nome": "Peru", "semana_inicio": 1, "semana_fim": 52, "capacidade": 90, "unidade": "kg", "biologico": True},
+                {"nome": "Carne de Vaca", "semana_inicio": 11, "semana_fim": 9, "capacidade": 120, "unidade": "kg", "biologico": True},
+                {"nome": "Peru", "semana_inicio": 11, "semana_fim": 9, "capacidade": 90, "unidade": "kg", "biologico": True},
             ]
         },
         # Lucas - Frango (segunda opção, menor prioridade)
@@ -248,7 +175,7 @@ def create_fornecedores(session, user_ids):
             "certificado": False,
             "freguesia": "Tarouquela",
             "produtos": [
-                {"nome": "Frango", "semana_inicio": 1, "semana_fim": 52, "capacidade": 150, "unidade": "kg", "biologico": True},
+                {"nome": "Frango", "semana_inicio": 11, "semana_fim": 9, "capacidade": 150, "unidade": "kg", "biologico": True},
             ]
         },
         # Rita - Hortícolas especiais (kg)
@@ -276,8 +203,8 @@ def create_fornecedores(session, user_ids):
             "certificado": False,
             "freguesia": "Oliveira do Douro",
             "produtos": [
-                {"nome": "Peixe", "semana_inicio": 1, "semana_fim": 52, "capacidade": 100, "unidade": "kg", "biologico": False},
-                {"nome": "Bacalhau", "semana_inicio": 1, "semana_fim": 52, "capacidade": 70, "unidade": "kg", "biologico": False},
+                {"nome": "Peixe", "semana_inicio": 11, "semana_fim": 9, "capacidade": 100, "unidade": "kg", "biologico": False},
+                {"nome": "Bacalhau", "semana_inicio": 11, "semana_fim": 9, "capacidade": 70, "unidade": "kg", "biologico": False},
             ]
         },
         # Sofia - Hortícolas diversas (kg)
@@ -374,6 +301,62 @@ def create_fornecedores(session, user_ids):
     session.commit()
     print(f"✅ {len(fornecedores_data)} fornecedores criados com produtos coerentes")
 
+def create_receitas(session):
+    """Criar receitas fixas do catálogo"""
+    print("\n🍽️  Criando catálogo de receitas...")
+    from biocantinas.backend.app.models.receitas_catalogo import RECEITAS_CATOLOG
+    
+    for receita_dados in RECEITAS_CATOLOG:
+        # Verificar se a receita já existe
+        receita_existente = session.query(ReceitaORM).filter_by(nome=receita_dados["nome"]).first()
+        if receita_existente:
+            print(f"  ⏭️  Receita '{receita_dados['nome']}' já existe")
+            continue
+        
+        # Criar receita
+        receita = ReceitaORM(
+            nome=receita_dados["nome"],
+            descricao=receita_dados.get("descricao"),
+            tipo_refeicao=receita_dados.get("tipo_refeicao"),
+            categoria=receita_dados.get("categoria"),
+            porcoes_base=receita_dados.get("porcoes_base", 1),
+            tempo_preparo=receita_dados.get("tempo_preparo"),
+            ativa=True
+        )
+        session.add(receita)
+        session.flush()  # Para obter o ID da receita
+        
+        # Adicionar ingredientes
+        for ingrediente_dados in receita_dados.get("ingredientes", []):
+            # Procurar o produto no catálogo
+            produto = session.query(ProdutoORM).filter_by(
+                nome=ingrediente_dados["produto"]
+            ).first()
+            
+            if not produto:
+                # Se o produto não existir, criar
+                produto = ProdutoORM(
+                    nome=ingrediente_dados["produto"],
+                    tipo=obter_tipo_produto(ingrediente_dados["produto"]),
+                    ativo=True,
+                    unidade_medida="kg"
+                )
+                session.add(produto)
+                session.flush()
+            
+            # Criar item da receita
+            item_receita = ItemReceitaORM(
+                receita_id=receita.id,
+                produto_catalogo_id=produto.id,
+                quantidade_por_porcao=ingrediente_dados["quantidade_por_porcao"]
+            )
+            session.add(item_receita)
+        
+        print(f"  ✅ Receita '{receita_dados['nome']}' criada com {len(receita_dados.get('ingredientes', []))} ingredientes")
+    
+    session.commit()
+    print(f"✅ Catálogo de receitas criado")
+
 def create_ementas(session):
     """Criar ementas com refeições completas"""
     print("\n📋 Criando ementas...")
@@ -434,7 +417,7 @@ def create_ementas(session):
             tipo="jantar",
             descricao="Omelete com salada",
             itens=[
-                ItemRefeicaoORM(ingrediente="ovos", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="Ovos", quantidade_estimada=3),
                 ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=0.1),
                 ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=0.1),
             ]
@@ -632,7 +615,7 @@ def create_ementas(session):
             itens=[
                 ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=0.1),
                 ItemRefeicaoORM(ingrediente="tomate", quantidade_estimada=0.1),
-                ItemRefeicaoORM(ingrediente="ovos", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="Ovos", quantidade_estimada=3),
             ]
         ),
     ]
@@ -752,7 +735,7 @@ def create_ementas(session):
             tipo="jantar",
             descricao="Omeleta com Alface e Laranja",
             itens=[
-                ItemRefeicaoORM(ingrediente="ovos", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="Ovos", quantidade_estimada=3),
                 ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=0.1),
                 ItemRefeicaoORM(ingrediente="laranja", quantidade_estimada=0.15),
             ]
@@ -827,7 +810,7 @@ def create_ementas(session):
             itens=[
                 ItemRefeicaoORM(ingrediente="espinafre", quantidade_estimada=0.08),
                 ItemRefeicaoORM(ingrediente="queijo", quantidade_estimada=0.08),
-                ItemRefeicaoORM(ingrediente="ovos", quantidade_estimada=3),
+                ItemRefeicaoORM(ingrediente="Ovos", quantidade_estimada=3),
                 ItemRefeicaoORM(ingrediente="alface", quantidade_estimada=0.1),
             ]
         ),
@@ -1160,6 +1143,73 @@ def create_historico(session):
     print(f"✅ {len(historico_dias)} registros de dias e {len(historico_pratos)} registros de pratos criados")
 
 def create_execucoes(session):
+
+    def ajustar_semana_10_sem_receitas(session):
+        """Remove principais ingredientes da semana 10 para teste de falta de produtos"""
+        print("\n🔧 Ajustando semana 10 para não ter produtos adequados...")
+    
+        # Produtos críticos para receitas que vamos remover da semana 10
+        produtos_criticos = [
+            "Frango", "Cenoura", "Ovos", "Queijo", "Leite",
+            "Carne de Vaca", "Peru", "Peixe", "Bacalhau"
+        ]
+    
+        produtos = session.query(ProdutoORM).filter(
+            ProdutoORM.nome.in_(produtos_criticos)
+        ).all()
+    
+        contador = 0
+        for produto in produtos:
+            # Obter todos os ProdutoFornecedor deste produto
+            pf_list = session.query(ProdutoFornecedorORM).filter_by(
+                produto_id=produto.id
+            ).all()
+        
+            for pf in pf_list:
+                # Se cobre semana 10, remover essa semana
+                if pf.semana_producao_inicio <= 10 <= pf.semana_producao_fim:
+                    # Se é ano-todo (1-52), dividir em duas faixas
+                    if pf.semana_producao_inicio == 1 and pf.semana_producao_fim == 52:
+                        pf.semana_producao_fim = 9
+                        contador += 1
+                        # Criar segunda entrada para semanas 11-52
+                        pf2 = ProdutoFornecedorORM(
+                            fornecedor_id=pf.fornecedor_id,
+                            produto_id=pf.produto_id,
+                            biologico=pf.biologico,
+                            semana_producao_inicio=11,
+                            semana_producao_fim=52,
+                            capacidade=pf.capacidade,
+                            unidade_medida=pf.unidade_medida,
+                            data_inscricao=pf.data_inscricao
+                        )
+                        session.add(pf2)
+                    elif pf.semana_producao_inicio <= 10 <= pf.semana_producao_fim:
+                        # Outro padrão (não ano-todo), apenas remover a semana
+                        # Se começa antes de 10, terminar em 9
+                        if pf.semana_producao_inicio < 10:
+                            pf.semana_producao_fim = 9
+                            contador += 1
+                            # Criar segunda entrada para semanas 11+
+                            if pf.semana_producao_fim > 10:
+                                pf2 = ProdutoFornecedorORM(
+                                    fornecedor_id=pf.fornecedor_id,
+                                    produto_id=pf.produto_id,
+                                    biologico=pf.biologico,
+                                    semana_producao_inicio=11,
+                                    semana_producao_fim=pf.semana_producao_fim,
+                                    capacidade=pf.capacidade,
+                                    unidade_medida=pf.unidade_medida,
+                                    data_inscricao=pf.data_inscricao
+                                )
+                                session.add(pf2)
+                        # Se começa em 10 ou depois, apenas deletar
+                        elif pf.semana_producao_inicio == 10:
+                            session.delete(pf)
+                            contador += 1
+    
+        session.commit()
+        print(f"✅ Semana 10 ajustada: {contador} registros modificados")
     """Criar dados de execução de refeições para teste de desperdício"""
     print("\n⚙️  Criando execuções de refeições...")
     
@@ -1203,7 +1253,13 @@ def main():
     print("🔄 RECRIANDO BANCO DE DADOS COMPLETO - SEM DUPLICADOS")
     print("=" * 70)
     
-    DB_PATH = os.getenv("BIOCANTINAS_DB_PATH", "sqlite:///biocantinas.db")
+    # Usar o mesmo caminho que o backend
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent  # scripts -> projeto raiz
+    DB_FILE = PROJECT_ROOT / "biocantinas.db"
+    DB_PATH = f"sqlite:///{DB_FILE}"
+    
+    print(f"\n📍 Base de dados: {DB_FILE}\n")
+    
     delete_database(DB_PATH)
     
     # Recriar o engine para garantir que não há cache
@@ -1222,6 +1278,7 @@ def main():
     try:
         user_ids = create_users(session)
         create_fornecedores(session, user_ids)
+        create_receitas(session)
         create_ementas(session)
         create_reservas(session)
         create_historico(session)
@@ -1234,6 +1291,7 @@ def main():
         print(f"  - Usuários: {session.query(UserORM).count()}")
         print(f"  - Fornecedores: {session.query(FornecedorORM).count()}")
         print(f"  - Produtos: {session.query(ProdutoFornecedorORM).count()}")
+        print(f"  - Receitas: {session.query(ReceitaORM).count()}")
         print(f"  - Ementas: {session.query(EmentaORM).count()}")
         print(f"  - Refeições: {session.query(RefeicaoORM).count()}")
         print(f"  - Reservas: {session.query(ReservaRefeicaoORM).count()}")
@@ -1242,12 +1300,12 @@ def main():
         print(f"  - Histórico Pratos: {session.query(HistoricoReservasPratoORM).count()}")
         
         print("\n👤 Credenciais:")
-        print("  - Gestor: gestor_cantina / gestor123")
-        print("  - Dietista: dietista / dietista123")
-        print("  - Aluno 1: aluno1 / aluno123")
-        print("  - Aluno 2: aluno2 / aluno123")
-        print("  - João Silva (Produtor): João Silva / produtor123")
-        print("  - Maria Carvalho (Produtora): Maria Carvalho / produtor123")
+        print("  - Gestor Cantina: gestor / 1")
+        print("  - Dietista: dietista / 1")
+        print("  - Aluno 1: aluno1 / 1")
+        print("  - Aluno 2: aluno2 / 1")
+        print("  - João Silva (Produtor): João Silva / 1")
+        print("  - Maria Carvalho (Produtora): Maria Carvalho / 1")
         
         # Copiar o banco de dados para o diretório do backend
         import shutil

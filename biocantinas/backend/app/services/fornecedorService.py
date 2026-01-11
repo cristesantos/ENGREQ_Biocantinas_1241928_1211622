@@ -187,11 +187,15 @@ class Services:
         freguesias_bloqueadas = {f.nome.lower() for f in self.repo.listar_fechos_freguesia(apenas_ativos=True)}
         mapa: Dict[str, List[tuple]] = {}
 
+        def _disponivel(semana_num: int, inicio: int, fim: int) -> bool:
+            """Suporta intervalos lineares (inicio<=fim) e circulares (inicio>fim) cruzando fim de ano."""
+            if inicio <= fim:
+                return inicio <= semana_num <= fim
+            return semana_num >= inicio or semana_num <= fim
+
         for f in fornecedores:
             for p in f.produtos:
-                # Verificar se o produto está disponível nesta semana
-                if not (p.semana_producao_inicio <= semana <= p.semana_producao_fim):
-                    # Produto não está disponível nesta semana
+                if not _disponivel(semana, p.semana_producao_inicio, p.semana_producao_fim):
                     continue
 
                 # Bloquear fornecedores em fecho sanitário por freguesia

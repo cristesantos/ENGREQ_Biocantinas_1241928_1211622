@@ -83,6 +83,33 @@ class UserORM(Base):
     is_active = Column(Boolean, default=True, nullable=False)
 
 
+class ReceitaORM(Base):
+    """Catálogo de receitas fixas com ingredientes e quantidades definidas"""
+    __tablename__ = "receitas"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String, nullable=False, unique=True)
+    descricao = Column(Text, nullable=True)
+    tipo_refeicao = Column(String, nullable=True)  # "almoço", "jantar", "ambos"
+    categoria = Column(String, nullable=True)  # "carne", "peixe", "vegetariano", etc.
+    porcoes_base = Column(Integer, default=1, nullable=False)  # Número de porções para as quantidades definidas
+    tempo_preparo = Column(Integer, nullable=True)  # Tempo de preparação em minutos
+    ativa = Column(Boolean, default=True, nullable=False)
+    
+    ingredientes = relationship("ItemReceitaORM", back_populates="receita", cascade="all, delete-orphan")
+
+
+class ItemReceitaORM(Base):
+    """Ingredientes de uma receita com quantidades fixas"""
+    __tablename__ = "itens_receita"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    receita_id = Column(Integer, ForeignKey("receitas.id"), nullable=False)
+    produto_catalogo_id = Column(Integer, ForeignKey("produtos_catalogo.id"), nullable=False)
+    quantidade_por_porcao = Column(Float, nullable=False)  # Quantidade em kg por porção
+    
+    receita = relationship("ReceitaORM", back_populates="ingredientes")
+    produto = relationship("ProdutoORM")
+
+
 class EmentaORM(Base):
     __tablename__ = "ementas"
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -97,11 +124,14 @@ class RefeicaoORM(Base):
     __tablename__ = "refeicoes"
     id = Column(Integer, primary_key=True, autoincrement=True)
     ementa_id = Column(Integer, ForeignKey("ementas.id"), nullable=False)
+    receita_id = Column(Integer, ForeignKey("receitas.id"), nullable=True)  # Referência à receita do catálogo
     dia_semana = Column(Integer, nullable=False)  # 1=Segunda, 2=Terça, ..., 5=Sexta
     tipo = Column(String, nullable=False)  # "almoço" ou "jantar"
     descricao = Column(Text, nullable=True)
+    numero_porcoes = Column(Integer, nullable=True)  # Número de porções planejadas para esta refeição
     
     ementa = relationship("EmentaORM", back_populates="refeicoes")
+    receita = relationship("ReceitaORM")
     itens = relationship("ItemRefeicaoORM", back_populates="refeicao", cascade="all, delete-orphan")
     execucoes = relationship("ExecucaoRefeicaoORM", back_populates="refeicao", cascade="all, delete-orphan")
 

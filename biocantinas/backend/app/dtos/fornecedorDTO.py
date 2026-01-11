@@ -48,8 +48,13 @@ class ProdutoFornecedorAdd(BaseModel):
 	@field_validator('semana_producao_fim')
 	@classmethod
 	def validar_fim_maior_que_inicio(cls, v, info):
-		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
-			raise ValueError('Semana fim deve ser maior ou igual à semana início')
+		if 'semana_producao_inicio' in info.data:
+			inicio = info.data['semana_producao_inicio']
+			# Permitir intervalos circulares (ex.: 11-9) para representar faixas que cruzam o fim do ano
+			if inicio is None:
+				return v
+			if inicio <= v or inicio > v:
+				return v
 		return v
 
 class OrdemFornecedor(BaseModel):

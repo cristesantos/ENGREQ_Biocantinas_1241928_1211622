@@ -7,6 +7,7 @@ class ItemRefeicao(BaseModel):
     ingrediente: str
     produto_id: int | None = None
     quantidade_estimada: float | None = None
+    unidade_medida: str | None = None
 
 
 class Refeicao(BaseModel):
@@ -14,6 +15,8 @@ class Refeicao(BaseModel):
     tipo: str  # "almoço" ou "jantar"
     descricao: str | None = None
     itens: List[ItemRefeicao] = []
+    receita_id: int | None = None
+    numero_porcoes: int | None = None
 
 
 class EmentaCreate(BaseModel):
