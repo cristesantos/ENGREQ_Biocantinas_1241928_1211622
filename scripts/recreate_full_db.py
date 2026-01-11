@@ -7,10 +7,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import os
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from biocantinas.backend.app.db.session import SessionLocal, engine, init_db
 from biocantinas.backend.app.db.models import (
-    Base, UserORM, FornecedorORM, ProdutoFornecedorORM, 
+    Base, UserORM, FornecedorORM, FornecedorEstadoORM, ProdutoORM, ProdutoFornecedorORM, 
     EmentaORM, RefeicaoORM, ItemRefeicaoORM, ReservaRefeicaoORM,
     HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM, ExecucaoRefeicaoORM
 )
@@ -168,6 +168,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["joao"],
             "data_inscricao": today - timedelta(days=60),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
+            "freguesia": "Freigil e Miomães",
             "produtos": [
                 {"nome": "Maçã", "semana_inicio": 35, "semana_fim": 52, "capacidade": 150, "unidade": "kg", "biologico": True},
                 {"nome": "Pera", "semana_inicio": 32, "semana_fim": 48, "capacidade": 80, "unidade": "kg", "biologico": True},
@@ -181,6 +184,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["maria"],
             "data_inscricao": today - timedelta(days=75),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
+            "freguesia": "Cinfães",
             "produtos": [
                 {"nome": "Tomate", "semana_inicio": 20, "semana_fim": 43, "capacidade": 180, "unidade": "kg", "biologico": True},
                 {"nome": "Alface", "semana_inicio": 15, "semana_fim": 50, "capacidade": 100, "unidade": "kg", "biologico": True},
@@ -195,6 +201,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["pedro"],
             "data_inscricao": today - timedelta(days=45),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
+            "freguesia": "Souselo",
             "produtos": [
                 {"nome": "Frango", "semana_inicio": 1, "semana_fim": 52, "capacidade": 200, "unidade": "kg", "biologico": True},
                 {"nome": "Ovos", "semana_inicio": 1, "semana_fim": 52, "capacidade": 300, "unidade": "unidades", "biologico": True},
@@ -206,6 +215,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["ana"],
             "data_inscricao": today - timedelta(days=90),
             "aprovado": True,
+            "local": False,
+            "certificado": True,
+            "freguesia": "Travanca",
             "produtos": [
                 {"nome": "Leite", "semana_inicio": 1, "semana_fim": 52, "capacidade": 300, "unidade": "L", "biologico": True},
                 {"nome": "Queijo", "semana_inicio": 1, "semana_fim": 52, "capacidade": 40, "unidade": "kg", "biologico": True},
@@ -218,6 +230,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["carlos"],
             "data_inscricao": today - timedelta(days=55),
             "aprovado": True,
+            "local": False,
+            "certificado": False,
+            "freguesia": "Bustelo",
             "produtos": [
                 {"nome": "Carne de Vaca", "semana_inicio": 1, "semana_fim": 52, "capacidade": 120, "unidade": "kg", "biologico": True},
                 {"nome": "Peru", "semana_inicio": 1, "semana_fim": 52, "capacidade": 90, "unidade": "kg", "biologico": True},
@@ -229,6 +244,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["lucas"],
             "data_inscricao": today - timedelta(days=20),
             "aprovado": True,
+            "local": True,
+            "certificado": False,
+            "freguesia": "Tarouquela",
             "produtos": [
                 {"nome": "Frango", "semana_inicio": 1, "semana_fim": 52, "capacidade": 150, "unidade": "kg", "biologico": True},
             ]
@@ -239,6 +257,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["rita"],
             "data_inscricao": today - timedelta(days=65),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
+            "freguesia": "Moimenta",
             "produtos": [
                 {"nome": "Espinafre", "semana_inicio": 20, "semana_fim": 45, "capacidade": 70, "unidade": "kg", "biologico": True},
                 {"nome": "Pimento", "semana_inicio": 22, "semana_fim": 42, "capacidade": 85, "unidade": "kg", "biologico": True},
@@ -251,6 +272,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["miguel"],
             "data_inscricao": today - timedelta(days=50),
             "aprovado": True,
+            "local": False,
+            "certificado": False,
+            "freguesia": "Oliveira do Douro",
             "produtos": [
                 {"nome": "Peixe", "semana_inicio": 1, "semana_fim": 52, "capacidade": 100, "unidade": "kg", "biologico": False},
                 {"nome": "Bacalhau", "semana_inicio": 1, "semana_fim": 52, "capacidade": 70, "unidade": "kg", "biologico": False},
@@ -262,6 +286,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["sofia"],
             "data_inscricao": today - timedelta(days=70),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
+            "freguesia": "Nespereira",
             "produtos": [
                 {"nome": "Batata", "semana_inicio": 28, "semana_fim": 48, "capacidade": 200, "unidade": "kg", "biologico": True},
                 {"nome": "Cebola", "semana_inicio": 32, "semana_fim": 52, "capacidade": 120, "unidade": "kg", "biologico": True},
@@ -274,6 +301,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["bruno"],
             "data_inscricao": today - timedelta(days=15),
             "aprovado": True,
+            "local": False,
+            "certificado": True,
+            "freguesia": "Ferreiros de Tendais",
             "produtos": [
                 {"nome": "Batata", "semana_inicio": 28, "semana_fim": 48, "capacidade": 180, "unidade": "kg", "biologico": True},
             ]
@@ -284,6 +314,9 @@ def create_fornecedores(session, user_ids):
             "usuario_id": user_ids["carla"],
             "data_inscricao": today - timedelta(days=40),
             "aprovado": True,
+            "local": True,
+            "certificado": True,
+            "freguesia": "Alhões",
             "produtos": [
                 {"nome": "Tomate", "semana_inicio": 20, "semana_fim": 43, "capacidade": 150, "unidade": "kg", "biologico": True},
                 {"nome": "Alface", "semana_inicio": 15, "semana_fim": 50, "capacidade": 80, "unidade": "kg", "biologico": True},
@@ -292,28 +325,51 @@ def create_fornecedores(session, user_ids):
         },
     ]
     
+    produto_index = 0
     for data in fornecedores_data:
         fornecedor = FornecedorORM(
             nome=data["nome"],
             usuario_id=data["usuario_id"],
             data_inscricao=data["data_inscricao"],
-            aprovado=data["aprovado"]
+            aprovado=data["aprovado"],
+            local=data.get("local", False),
+            certificado=data.get("certificado", False),
         )
         session.add(fornecedor)
         session.flush()
+        # Estado sanitário / localização
+        estado = FornecedorEstadoORM(
+            fornecedor_id=fornecedor.id,
+            em_quarentena=False,
+            freguesia=data.get("freguesia")
+        )
+        session.add(estado)
         
         for p in data["produtos"]:
-            produto = ProdutoFornecedorORM(
+            # Buscar ou criar produto no catálogo
+            produto_catalogo = session.query(ProdutoORM).filter_by(nome=p['nome']).first()
+            if not produto_catalogo:
+                produto_catalogo = ProdutoORM(
+                    nome=p['nome'],
+                    tipo=obter_tipo_produto(p['nome']),
+                    unidade_medida=p['unidade'],
+                    ativo=True
+                )
+                session.add(produto_catalogo)
+                session.flush()
+            
+            produto_fornecedor = ProdutoFornecedorORM(
                 fornecedor_id=fornecedor.id,
-                nome=p['nome'],
-                tipo=obter_tipo_produto(p['nome']),
+                produto_id=produto_catalogo.id,
                 biologico=p['biologico'],
                 semana_producao_inicio=p['semana_inicio'],
                 semana_producao_fim=p['semana_fim'],
                 capacidade=p['capacidade'],
-                unidade=p['unidade']
+                unidade_medida=p['unidade'],
+                data_inscricao=p.get("data_inscricao") or (datetime.utcnow() - timedelta(days=produto_index))
             )
-            session.add(produto)
+            session.add(produto_fornecedor)
+            produto_index += 1
     
     session.commit()
     print(f"✅ {len(fornecedores_data)} fornecedores criados com produtos coerentes")

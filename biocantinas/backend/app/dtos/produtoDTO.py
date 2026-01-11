@@ -108,3 +108,78 @@ class ProdutoDTO(BaseModel):
 		if 'semana_producao_inicio' in info.data and v < info.data['semana_producao_inicio']:
 			raise ValueError('Semana fim deve ser maior ou igual à semana início')
 		return v
+
+
+class ProdutoCatalogoDTO(BaseModel):
+	"""DTO para produto do catálogo global"""
+	id: int
+	nome: str
+	tipo: str | None = None
+	descricao: str | None = None
+	unidade_medida: str = "kg"
+	epoca_tipica: str | None = None
+	ativo: bool = True
+
+
+class ProdutoCatalogoCreateDTO(BaseModel):
+	"""DTO para criar produto no catálogo"""
+	nome: str
+	tipo: str | None = None
+	descricao: str | None = None
+	unidade_medida: str = "kg"
+	epoca_tipica: str | None = None
+	ativo: bool = True
+
+
+class ProdutoCatalogoUpdateDTO(BaseModel):
+	"""DTO para atualizar produto no catálogo"""
+	nome: str | None = None
+	tipo: str | None = None
+	descricao: str | None = None
+	unidade_medida: str | None = None
+	epoca_tipica: str | None = None
+	ativo: bool | None = None
+
+
+class ProdutoFornecedorDTO(BaseModel):
+	"""DTO para produto de fornecedor"""
+	id: int
+	fornecedor_id: int
+	produto_id: int
+	capacidade: int
+	preco_unitario: float | None = None
+	unidade_medida: str = "kg"
+	intervalo_producao_inicio: int | None = None
+	intervalo_producao_fim: int | None = None
+	prioridade: int | None = None
+	biologico: bool = True
+	local: bool = False
+	disponivel: bool = True
+
+
+class ProdutoFornecedorCreateDTO(BaseModel):
+	"""DTO para criar produto em fornecedor"""
+	produto_id: int
+	capacidade: int
+	preco_unitario: float | None = None
+	unidade_medida: str = "kg"
+	intervalo_producao_inicio: int | None = None
+	intervalo_producao_fim: int | None = None
+	prioridade: int | None = None
+	biologico: bool = True
+	local: bool = False
+	disponivel: bool = True
+
+
+class ProdutoFornecedorUpdateDTO(BaseModel):
+	"""DTO para atualizar produto em fornecedor"""
+	produto_id: int | None = None
+	capacidade: int | None = None
+	preco_unitario: float | None = None
+	unidade_medida: str | None = None
+	intervalo_producao_inicio: int | None = None
+	intervalo_producao_fim: int | None = None
+	prioridade: int | None = None
+	biologico: bool | None = None
+	local: bool | None = None
+	disponivel: bool | None = None

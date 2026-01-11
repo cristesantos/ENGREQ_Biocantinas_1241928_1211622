@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from .controllers.fornecedorController import router as fornecedores_router
-from .controllers.produtoFornecedorController import router as produtos_fornecedor_router
 from .controllers.produtoCatalogoController import router as produtos_catalogo_router
 from .controllers.authController import router as auth_router
 from .controllers.ementaController import router as ementas_router
@@ -16,7 +15,6 @@ def root():
 
 # Controllers/Routers
 app.include_router(fornecedores_router, prefix="")
-app.include_router(produtos_fornecedor_router, prefix="")
 app.include_router(produtos_catalogo_router, prefix="")
 app.include_router(auth_router, prefix="")
 app.include_router(ementas_router, prefix="")

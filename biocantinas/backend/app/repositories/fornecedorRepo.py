@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from ..db.models import FornecedorORM, ProdutoFornecedorORM, FornecedorEstadoORM, FreguesiaFechoORM
+from ..db.models import FornecedorORM, ProdutoFornecedorORM, FornecedorEstadoORM, FreguesiaFechoORM, ProdutoORM
 from ..models.fornecedor import FornecedorModel
 from ..models.produto import ProdutoFornecedorModel
 
@@ -13,22 +13,34 @@ class FornecedorRepo:
 			nome=model.nome,
 			data_inscricao=model.data_inscricao,
 			aprovado=model.aprovado,
+			local=model.local,
+			certificado=model.certificado,
 			usuario_id=model.usuario_id,
 		)
-		orm.produtos = [
-			ProdutoFornecedorORM(
-				nome=p.nome,
-				tipo=p.tipo,
+		orm.produtos = []
+		for p in model.produtos:
+			# Buscar ou criar produto no catálogo
+			produto_catalogo = self.session.query(ProdutoORM).filter_by(nome=p.nome).first()
+			if not produto_catalogo:
+				produto_catalogo = ProdutoORM(
+					nome=p.nome,
+					tipo=p.tipo,
+					unidade_medida=p.unidade_medida,
+					ativo=True
+				)
+				self.session.add(produto_catalogo)
+				self.session.flush()
+			
+			produto_fornecedor = ProdutoFornecedorORM(
+				produto_id=produto_catalogo.id,
 				biologico=p.biologico,
 				semana_producao_inicio=p.semana_producao_inicio,
 				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
-				unidade=p.unidade,
+				unidade_medida=p.unidade_medida,
 				certificado=p.certificado,
-				data_inscricao=p.data_inscricao,
 			)
-			for p in model.produtos
-		]
+			orm.produtos.append(produto_fornecedor)
 		self.session.add(orm)
 		self.session.commit()
 		self.session.refresh(orm)
@@ -65,24 +77,35 @@ class FornecedorRepo:
 		orm.nome = f.nome
 		orm.data_inscricao = f.data_inscricao
 		orm.aprovado = f.aprovado
+		orm.local = f.local
+		orm.certificado = f.certificado
 		orm.usuario_id = f.usuario_id
 		
 		# Atualizar produtos: remover antigos e adicionar novos
 		orm.produtos.clear()
-		orm.produtos = [
-			ProdutoFornecedorORM(
-				nome=p.nome,
-				tipo=p.tipo,
+		for p in f.produtos:
+			# Buscar ou criar produto no catálogo
+			produto_catalogo = self.session.query(ProdutoORM).filter_by(nome=p.nome).first()
+			if not produto_catalogo:
+				produto_catalogo = ProdutoORM(
+					nome=p.nome,
+					tipo=p.tipo,
+					unidade_medida=p.unidade_medida,
+					ativo=True
+				)
+				self.session.add(produto_catalogo)
+				self.session.flush()
+			
+			produto_fornecedor = ProdutoFornecedorORM(
+				produto_id=produto_catalogo.id,
 				biologico=p.biologico,
 				semana_producao_inicio=p.semana_producao_inicio,
 				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
-				unidade=p.unidade,
+				unidade_medida=p.unidade_medida,
 				certificado=p.certificado,
-				data_inscricao=p.data_inscricao,
 			)
-			for p in f.produtos
-		]
+			orm.produtos.append(produto_fornecedor)
 		# Atualizar estado sanitário
 		estado = self.session.query(FornecedorEstadoORM).filter_by(fornecedor_id=f.id).first()
 		if not estado:
@@ -109,6 +132,34 @@ class FornecedorRepo:
 			estado.freguesia = freguesia
 		self.session.commit()
 
+	def adicionar_produto(self, fornecedor_id: int, produto: ProdutoFornecedorModel) -> None:
+		"""Adiciona um novo produto ao fornecedor sem afetar os existentes"""
+		# Buscar ou criar produto no catálogo
+		produto_catalogo = self.session.query(ProdutoORM).filter_by(nome=produto.nome).first()
+		if not produto_catalogo:
+			produto_catalogo = ProdutoORM(
+				nome=produto.nome,
+				tipo=produto.tipo,
+				unidade_medida=produto.unidade_medida,
+				ativo=True
+			)
+			self.session.add(produto_catalogo)
+			self.session.flush()
+		
+		# Criar produto_fornecedor
+		produto_fornecedor = ProdutoFornecedorORM(
+			fornecedor_id=fornecedor_id,
+			produto_id=produto_catalogo.id,
+			biologico=produto.biologico,
+			semana_producao_inicio=produto.semana_producao_inicio,
+			semana_producao_fim=produto.semana_producao_fim,
+			capacidade=produto.capacidade,
+			unidade_medida=produto.unidade_medida,
+			certificado=produto.certificado,
+		)
+		self.session.add(produto_fornecedor)
+		self.session.commit()
+
 	def listar_fechos_freguesia(self, apenas_ativos: bool = False) -> List[FreguesiaFechoORM]:
 		q = self.session.query(FreguesiaFechoORM)
 		if apenas_ativos:
@@ -128,13 +179,15 @@ class FornecedorRepo:
 	def _to_model(self, orm: FornecedorORM, estado: FornecedorEstadoORM | None = None) -> FornecedorModel:
 		produtos = [
 			ProdutoFornecedorModel(
-				nome=p.nome,
-				tipo=p.tipo,
+				fornecedor_id=orm.id,
+				produto_id=p.produto_id,
+				nome=p.produto.nome if p.produto else None,
+				tipo=p.produto.tipo if p.produto else None,
 				biologico=p.biologico,
 				semana_producao_inicio=p.semana_producao_inicio,
 				semana_producao_fim=p.semana_producao_fim,
 				capacidade=p.capacidade,
-				unidade=p.unidade,
+				unidade_medida=p.unidade_medida,
 				certificado=p.certificado,
 				data_inscricao=p.data_inscricao,
 			)
@@ -146,6 +199,8 @@ class FornecedorRepo:
 			data_inscricao=orm.data_inscricao,
 			produtos=produtos,
 			aprovado=orm.aprovado,
+			local=orm.local,
+			certificado=orm.certificado,
 			usuario_id=orm.usuario_id,
 			em_quarentena=estado.em_quarentena if estado else False,
 			freguesia=estado.freguesia if estado else None,

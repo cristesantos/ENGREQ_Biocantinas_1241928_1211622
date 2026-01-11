@@ -5,7 +5,6 @@ from ..repositories.ementaRepo import EmentaRepo
 from ..repositories.reservaRepo import ReservaRepo
 from ..repositories.planoProducaoRepo import PlanoProducaoRepo
 from ..repositories.pedidoRepo import PedidoRepo
-from ..repositories.produtoFornecedorRepo import ProdutoFornecedorRepo
 from ..repositories.historicoReservasRepo import HistoricoReservasRepo
 
 class AprovisionamentoService:
@@ -16,7 +15,7 @@ class AprovisionamentoService:
         self.reserva_repo = ReservaRepo(self.session)
         self.plano_repo = PlanoProducaoRepo(self.session)
         self.pedido_repo = PedidoRepo(self.session)
-        self.produto_repo = ProdutoFornecedorRepo(self.session)
+        self.produto_repo = None
         self.historico_repo = HistoricoReservasRepo(self.session)
 
     def _prever_reservas_refeicao(self, dia_semana_nome: str, tipo_refeicao: str, descricao_prato: str) -> tuple[int, str]:
@@ -282,6 +281,9 @@ class AprovisionamentoService:
         
         Retorna: lista de pedidos criados
         """
+        if self.produto_repo is None:
+            from ..repositories.produtoFornecedorRepo import ProdutoFornecedorRepo
+            self.produto_repo = ProdutoFornecedorRepo(self.session)
         necessidades = self.calcular_necessidades(data_inicio, data_fim)
         pedidos_criados = []
         erros = []

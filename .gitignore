@@ -15,5 +15,6 @@ env/
 # VSCode
 .vscode/
 
-# SQLite database
-#*.db
+# SQLite database (apenas biocantinas.db na raiz é permitida)
+*.db
+!biocantinas.db

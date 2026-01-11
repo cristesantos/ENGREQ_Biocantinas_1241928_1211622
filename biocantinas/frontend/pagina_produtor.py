@@ -522,8 +522,20 @@ def pagina_produtor(API_URL, auth_token):
         todos_produtos = []
         for categoria, produtos in PRODUTOS_DISPONIVEIS.items():
             todos_produtos.extend(produtos.keys())
+        
+        # Filtrar produtos já cadastrados
+        produtos_cadastrados = set()
+        if perfil_response.status_code == 200:
+            perfil = perfil_response.json()
+            produtos_cadastrados = {p.get("nome", "").strip() for p in perfil.get("produtos", [])}
+        
+        produtos_disponiveis = [p for p in todos_produtos if p not in produtos_cadastrados]
+        
+        if not produtos_disponiveis:
+            st.info("✅ Todos os produtos disponíveis já foram cadastrados.")
+            st.stop()
 
-        prod_nome = st.selectbox("Produto", options=[""] + todos_produtos)
+        prod_nome = st.selectbox("Produto", options=[""] + produtos_disponiveis)
         
         # Determinar automaticamente o tipo baseado no produto selecionado
         tipo_produto = None
@@ -593,6 +605,7 @@ def pagina_produtor(API_URL, auth_token):
 
                 payload = {
                     "nome": prod_nome,
+                    "tipo": tipo_produto,
                     "biologico": biologico,
                     "semana_producao_inicio": int(semana_inicio),
                     "semana_producao_fim": int(semana_fim),

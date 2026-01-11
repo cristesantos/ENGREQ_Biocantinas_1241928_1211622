@@ -260,8 +260,10 @@ def pagina_gestor_cantina(API_URL, auth_token):
                                     if forn:
                                         capacidade = None
                                         unidade = "kg"
+                                        produto_info = None
                                         for p in forn.get('produtos', []):
                                             if p.get('nome', '').lower() == o['produto'].lower():
+                                                produto_info = p
                                                 capacidade = p.get('capacidade')
                                                 unidade = p.get('unidade', 'kg')
                                                 break
@@ -271,10 +273,22 @@ def pagina_gestor_cantina(API_URL, auth_token):
                                         freguesia_atual = forn.get('freguesia') or ""
                                         freguesia_fechada = (freguesia_atual.strip().lower() in freguesias_fechadas) if freguesia_atual else False
 
+                                        data_inscricao_produto = (produto_info or {}).get('data_inscricao') or forn.get('data_inscricao') or "N/D"
+                                        local_flag = bool(forn.get('local', False))
+                                        certificado_flag = bool(forn.get('certificado', False))
+                                        biologico_flag = bool((produto_info or {}).get('biologico', False))
+
                                         st.markdown(
                                             f"{idx}. {forn['nome']} — {cap_text}  | "
                                             f"🛡️ Quarentena: **{'Sim' if estado_quarentena else 'Não'}** | "
                                             f"📍 Freguesia: **{freguesia_atual or 'N/D'}**"
+                                        )
+
+                                        st.caption(
+                                            f"📅 Inscrição produto: {data_inscricao_produto} | "
+                                            f"🏠 Local: {'Sim' if local_flag else 'Não'} | "
+                                            f"✅ Certificado: {'Sim' if certificado_flag else 'Não'} | "
+                                            f"🌿 Biológico: {'Sim' if biologico_flag else 'Não'}"
                                         )
 
                                         if st.button(

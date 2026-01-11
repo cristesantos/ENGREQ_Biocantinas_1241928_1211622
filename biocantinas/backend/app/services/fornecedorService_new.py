@@ -21,7 +21,6 @@ class Repository(Protocol):
     def obter_fornecedor(self, fid: int) -> FornecedorModel | None: ...
     def atualizar_fornecedor(self, f: FornecedorModel) -> None: ...
     def atualizar_estado(self, fornecedor_id: int, em_quarentena: bool | None, freguesia: str | None) -> None: ...
-    def adicionar_produto(self, fornecedor_id: int, produto: ProdutoFornecedorModel) -> None: ...
     def definir_fecho_freguesia(self, nome: str, ativo: bool): ...
     def listar_fechos_freguesia(self, apenas_ativos: bool = False): ...
 
@@ -46,9 +45,6 @@ class SqlRepository:
     def atualizar_estado(self, fornecedor_id: int, em_quarentena: bool | None, freguesia: str | None) -> None:
         self.repo.atualizar_estado(fornecedor_id, em_quarentena, freguesia)
 
-    def adicionar_produto(self, fornecedor_id: int, produto: ProdutoFornecedorModel) -> None:
-        self.repo.adicionar_produto(fornecedor_id, produto)
-
     def definir_fecho_freguesia(self, nome: str, ativo: bool):
         return self.repo.definir_fecho_freguesia(nome, ativo)
 
@@ -62,11 +58,6 @@ class Services:
     # CRUD + business
     def criar_fornecedor(self, data: FornecedorCreateDTO, usuario_id: int) -> FornecedorDTO:
         # ID é atribuído pelo autoincrement da BD
-        # Garantir que não há produtos duplicados no payload
-        nomes = [p.nome.strip().lower() for p in data.produtos]
-        if len(nomes) != len(set(nomes)):
-            raise ValueError("O mesmo produto não pode ser registrado duas vezes para o fornecedor.")
-
         model = dto_to_model_create(data, new_id=0)
         model.usuario_id = usuario_id  # Vincular ao usuário
         stored = self.repo.criar_fornecedor(model)
@@ -113,11 +104,6 @@ class Services:
         
         if not fornecedor:
             raise ValueError("Fornecedor não encontrado")
-
-        # Impedir duplicação de produto para o mesmo fornecedor
-        produto_nome = produto_data.nome.strip().lower()
-        if any((p.nome or "").strip().lower() == produto_nome for p in fornecedor.produtos):
-            raise ValueError("Este produto já está cadastrado para o fornecedor.")
         
         # Obter o tipo do produto do catálogo
         produto_info = obter_info_produto(produto_data.nome)
@@ -125,25 +111,24 @@ class Services:
         
         # Criar novo produto
         novo_produto = ProdutoFornecedorModel(
-            fornecedor_id=fornecedor.id,
-            produto_id=0,  # Será preenchido pelo repo
             nome=produto_data.nome,
             tipo=tipo_produto,
             biologico=produto_data.biologico,
             semana_producao_inicio=produto_data.semana_producao_inicio,
             semana_producao_fim=produto_data.semana_producao_fim,
             capacidade=produto_data.capacidade,
-            unidade_medida=produto_data.unidade,
+            unidade=produto_data.unidade,
             certificado=produto_data.certificado,
             data_inscricao=produto_data.data_inscricao or date.today(),
         )
         
-        # Adicionar produto diretamente sem afetar os existentes
-        self.repo.adicionar_produto(fornecedor.id, novo_produto)
+        # Adicionar ao fornecedor
+        fornecedor.produtos.append(novo_produto)
         
-        # Recarregar fornecedor atualizado
-        fornecedor_atualizado = self.repo.obter_fornecedor(fornecedor.id)
-        return model_to_dto(fornecedor_atualizado)
+        # Atualizar no banco de dados
+        self.repo.atualizar_fornecedor(fornecedor)
+        
+        return model_to_dto(fornecedor)
 
     def aprovar_fornecedor(self, fid: int, aprovado: bool) -> FornecedorDTO:
         fornecedor = self.repo.obter_fornecedor(fid)
@@ -169,9 +154,12 @@ class Services:
         
         Filtra apenas fornecedores com produtos disponíveis na semana especificada.
         
-        Critérios de ordenação:
+        Critérios de ordenação (ordem de prioridade):
         1. Apenas fornecedores com produto disponível naquela semana
-        2. Ordenação por data de inscrição (mais antigo = maior prioridade)
+        2. Produtor local (tem freguesia definida)
+        3. Certificação agrícola do produtor
+        4. Produto biológico
+        5. Data de inscrição do produto (mais antigo = maior prioridade)
         
         Args:
             semana: número da semana do ano (1-52). Obrigatório e deve estar entre 1 e 52.
@@ -184,7 +172,7 @@ class Services:
             raise ValueError(f"Semana deve estar entre 1 e 52, recebido: {semana}")
         
         fornecedores = [f for f in self.repo.listar_fornecedores() if f.aprovado and not f.em_quarentena]
-        freguesias_bloqueadas = {f.nome.lower() for f in self.repo.listar_fechos_freguesia(apenas_ativos=True)}
+        Freguesias_bloqueadas = {f.nome.lower() for f in self.repo.listar_fechos_freguesia(apenas_ativos=True)}
         mapa: Dict[str, List[tuple]] = {}
 
         for f in fornecedores:
@@ -195,7 +183,7 @@ class Services:
                     continue
 
                 # Bloquear fornecedores em fecho sanitário por freguesia
-                if f.freguesia and f.freguesia.lower() in freguesias_bloqueadas:
+                if f.freguesia and f.freguesia.lower() in Freguesias_bloqueadas:
                     continue
                 
                 mapa.setdefault(p.nome, []).append((f, p))
@@ -206,14 +194,14 @@ class Services:
             lista_ordenada = sorted(
                 lista,
                 key=lambda x: (
-                    # Prioridade 1: Data de inscrição (mais antigo = maior prioridade)
-                    x[1].data_inscricao if x[1].data_inscricao else float('inf'),
-                    # Prioridade 2: Produtor LOCAL
+                    # Prioridade 1: Produtor LOCAL (invertemos com not para prioritizar)
                     not (x[0].local or False),
-                    # Prioridade 3: Certificação agrícola
+                    # Prioridade 2: Certificação agrícola (invertemos para prioritizar)
                     not (x[0].certificado or False),
-                    # Prioridade 4: Produto biológico
+                    # Prioridade 3: Produto biológico (invertemos para prioritizar)
                     not (x[1].biologico or False),
+                    # Prioridade 4: Data de inscrição (mais antigo = mais prioritário)
+                    x[1].data_inscricao if x[1].data_inscricao else float('inf')
                 )
             )
             ordens.append(

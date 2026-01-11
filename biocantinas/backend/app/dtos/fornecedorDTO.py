@@ -7,6 +7,8 @@ class FornecedorCreate(BaseModel):
 	nome: str
 	data_inscricao: date
 	produtos: List[ProdutoFornecedor]
+	local: bool = False
+	certificado: bool = False
 	freguesia: str | None = None
 	em_quarentena: bool = False
 

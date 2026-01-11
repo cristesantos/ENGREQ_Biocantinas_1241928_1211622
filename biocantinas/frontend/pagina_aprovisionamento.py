@@ -171,12 +171,27 @@ def mostrar_aprovisionamento():
                                     forn = id_to_fornecedor.get(fid)
                                     if forn:
                                         capacidade = None
+                                        unidade = "kg"
+                                        produto_info = None
                                         for p in forn.get('produtos', []):
                                             if p.get('nome', '').lower() == o['produto'].lower():
+                                                produto_info = p
                                                 capacidade = p.get('capacidade')
+                                                unidade = p.get('unidade', 'kg')
                                                 break
-                                        cap_text = f"{capacidade} unidades" if capacidade is not None else "capacidade desconhecida"
-                                        st.write(f"{idx}. {forn['nome']} — {cap_text}")
+                                        cap_text = f"{capacidade} {unidade}" if capacidade is not None else "capacidade desconhecida"
+                                        data_inscricao_produto = (produto_info or {}).get('data_inscricao') or forn.get('data_inscricao') or "N/D"
+                                        local_flag = bool(forn.get('local', False))
+                                        certificado_flag = bool(forn.get('certificado', False))
+                                        biologico_flag = bool((produto_info or {}).get('biologico', False))
+
+                                        st.markdown(
+                                            f"{idx}. {forn['nome']} — {cap_text} | "
+                                            f"📅 Inscrição produto: **{data_inscricao_produto}** | "
+                                            f"📍 Local: **{'Sim' if local_flag else 'Não'}** | "
+                                            f"✅ Certificado: **{'Sim' if certificado_flag else 'Não'}** | "
+                                            f"🌿 Biológico: **{'Sim' if biologico_flag else 'Não'}**"
+                                        )
                                     else:
                                         st.write(f"{idx}. {fid} — fornecedor não encontrado")
                     else:
