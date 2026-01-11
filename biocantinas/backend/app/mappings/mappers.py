@@ -14,13 +14,15 @@ from ..db.models import UserORM, ProdutoORM
 def dto_to_model_create(dto: FornecedorCreateDTO, new_id: int) -> FornecedorModel:
     produtos: List[ProdutoFornecedorModel] = [
         ProdutoFornecedorModel(
+            fornecedor_id=0,  # Será definido após criação
+            produto_id=0,  # Será definido após criação
+            capacidade=p.capacidade,
+            semana_producao_inicio=p.semana_producao_inicio,
+            semana_producao_fim=p.semana_producao_fim,
             nome=p.nome,
             tipo=p.tipo,
             biologico=p.biologico,
-            semana_producao_inicio=p.semana_producao_inicio,
-            semana_producao_fim=p.semana_producao_fim,
-            capacidade=p.capacidade,
-            unidade=p.unidade,
+            unidade_medida=p.unidade_medida,
             certificado=p.certificado,
             data_inscricao=p.data_inscricao,
         )
@@ -49,7 +51,7 @@ def model_to_dto(model: FornecedorModel) -> FornecedorDTO:
             semana_producao_inicio=p.semana_producao_inicio,
             semana_producao_fim=p.semana_producao_fim,
             capacidade=p.capacidade,
-            unidade=p.unidade_medida,
+            unidade_medida=p.unidade_medida,
             certificado=p.certificado,
             data_inscricao=p.data_inscricao.date() if isinstance(p.data_inscricao, datetime) else p.data_inscricao,
         )

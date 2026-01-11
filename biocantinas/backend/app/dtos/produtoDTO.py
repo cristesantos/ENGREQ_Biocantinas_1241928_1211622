@@ -8,7 +8,7 @@ class ProdutoFornecedor(BaseModel):
 	semana_producao_inicio: int
 	semana_producao_fim: int
 	capacidade: int
-	unidade: str = "kg"
+	unidade_medida: str = "kg"
 	certificado: str | None = None
 	data_inscricao: date = Field(default_factory=date.today)
 	
