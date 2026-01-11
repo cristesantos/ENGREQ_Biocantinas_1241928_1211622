@@ -153,12 +153,12 @@ class ExecucaoRefeicaoORM(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
     data_execucao = Column(Date, nullable=False)
-    quantidade_produzida = Column(Integer, nullable=False)
+    quantidade_prevista = Column(Integer, nullable=True)  # Previsão do plano de produção
+    quantidade_produzida = Column(Integer, nullable=False)  # O que foi efetivamente produzido
     quantidade_servida = Column(Integer, nullable=False)
     quantidade_nao_servida = Column(Integer, nullable=False)
 
     refeicao = relationship("RefeicaoORM", back_populates="execucoes")
-
 
 # TABELAS PARA APROVISIONAMENTO (REQUISITO 4)
 
@@ -177,11 +177,13 @@ class ReservaRefeicaoORM(Base):
 class PlanoProducaoORM(Base):
     __tablename__ = "plano_producao"
     id = Column(Integer, primary_key=True, autoincrement=True)
+    periodo_data_inicio = Column(Date, nullable=False)  # Data início da semana/período
+    periodo_data_fim = Column(Date, nullable=False)  # Data fim da semana/período
     data_calculo = Column(DateTime, default=datetime.utcnow, nullable=False)
     produto_nome = Column(String, nullable=False)
-    quantidade_prevista = Column(Integer, nullable=False)
-    quantidade_realizada = Column(Integer, nullable=False)
-    desvio_percentual = Column(Float, nullable=False)
+    quantidade_prevista = Column(Integer, nullable=False)  # Planeado
+    quantidade_realizada = Column(Integer, default=0, nullable=False)  # Executado/Consumido
+    desvio_percentual = Column(Float, default=0.0, nullable=False)  # (realizada - prevista) / prevista * 100
     requer_alerta = Column(Boolean, default=False, nullable=False)
 
 

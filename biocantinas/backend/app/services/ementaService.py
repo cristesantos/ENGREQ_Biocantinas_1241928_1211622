@@ -317,6 +317,7 @@ class EmentaService:
     def _model_to_dto(self, model: EmentaModel) -> EmentaDTO:
         refeicoes = [
             RefeicaoDTO(
+                id=r.id,
                 dia_semana=r.dia_semana,
                 tipo=r.tipo,
                 descricao=r.descricao,

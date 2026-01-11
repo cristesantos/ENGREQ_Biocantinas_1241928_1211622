@@ -358,10 +358,84 @@ def create_receitas(session):
     print(f"✅ Catálogo de receitas criado")
 
 def create_ementas(session):
-    """Criar ementas com refeições completas"""
-    print("\n📋 Criando ementas...")
+    """Criar ementas simples baseadas apenas no catálogo de receitas"""
+    print("\n📋 Criando ementas baseadas em receitas do catálogo...")
     
-    # Ementa Semana 1: 10-16 Dez (Terça a Segunda)
+    # Obter receitas do catálogo
+    receitas = session.query(ReceitaORM).filter(ReceitaORM.ativa == True).all()
+    
+    if not receitas:
+        print("⚠️  Nenhuma receita encontrada. Nenhuma ementa será criada.")
+        return
+    
+    # Criar uma ementa simples para dezembro e janeiro
+    ementas_dados = [
+        {
+            "nome": "Ementa Semana 10-16 Dez",
+            "data_inicio": date(2025, 12, 10),
+            "data_fim": date(2025, 12, 16)
+        },
+        {
+            "nome": "Ementa Semana 17-23 Dez",
+            "data_inicio": date(2025, 12, 17),
+            "data_fim": date(2025, 12, 23)
+        },
+        {
+            "nome": "Ementa Semana 6-12 Jan",
+            "data_inicio": date(2026, 1, 6),
+            "data_fim": date(2026, 1, 12)
+        },
+        {
+            "nome": "Ementa Semana 13-19 Jan",
+            "data_inicio": date(2026, 1, 13),
+            "data_fim": date(2026, 1, 19)
+        }
+    ]
+    
+    total_refeicoes = 0
+    
+    for ementa_data in ementas_dados:
+        ementa = EmentaORM(
+            nome=ementa_data["nome"],
+            data_inicio=ementa_data["data_inicio"],
+            data_fim=ementa_data["data_fim"]
+        )
+        session.add(ementa)
+        session.flush()
+        
+        # Para cada dia da semana (Segunda a Sexta = 1 a 5)
+        for dia_semana in range(1, 6):
+            # Para almoço e jantar
+            for tipo in ["almoço", "jantar"]:
+                # Escolher 2 receitas diferentes para este dia/tipo
+                receita_idx = (dia_semana + (1 if tipo == "jantar" else 0)) % len(receitas)
+                receita = receitas[receita_idx]
+                
+                refeicao = RefeicaoORM(
+                    ementa_id=ementa.id,
+                    receita_id=receita.id,
+                    dia_semana=dia_semana,
+                    tipo=tipo,
+                    descricao=receita.nome,
+                    numero_porcoes=100
+                )
+                session.add(refeicao)
+                session.flush()
+                
+                # Copiar ingredientes da receita para a refeição
+                for item_receita in receita.ingredientes:
+                    item_refeicao = ItemRefeicaoORM(
+                        refeicao_id=refeicao.id,
+                        ingrediente=item_receita.produto.nome if item_receita.produto else "Desconhecido",
+                        quantidade_estimada=item_receita.quantidade_por_porcao
+                    )
+                    session.add(item_refeicao)
+                
+                total_refeicoes += 1
+    
+    session.commit()
+    print(f"✅ {len(ementas_dados)} ementas criadas com {total_refeicoes} refeições baseadas em receitas")
+
     ementa1 = EmentaORM(
         nome="Ementa Semana 10-16 Dez",
         data_inicio=date(2025, 12, 10),
@@ -950,7 +1024,7 @@ def create_ementas(session):
         session.add(refeicao)
     
     session.commit()
-    print(f"✅ 4 ementas criadas com {len(refeicoes1) + len(refeicoes2) + len(refeicoes3) + len(refeicoes4)} refeições")
+    print(f"✅ {len(ementas_dados)} ementas criadas com {total_refeicoes} refeições")
 
 def create_reservas(session):
     """Criar reservas de alunos para TODAS as refeições

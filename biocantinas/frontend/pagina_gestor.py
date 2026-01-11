@@ -310,6 +310,7 @@ def pagina_gestor(API_URL, auth_token):
                 selected_ementa_id = ementa_options[selected_ementa_label]
                 
                 # Subtabs para KPIs
+                # KPIs alinhados aos requisitos: % biológicos e desperdício (servido vs não servido)
                 kpi_tab1, kpi_tab2, kpi_tab3 = st.tabs(["Consolidado", "Sustentabilidade", "Desperdício"])
                 
                 # TAB CONSOLIDADO
@@ -326,20 +327,23 @@ def pagina_gestor(API_URL, auth_token):
                                 
                                 with col1:
                                     st.metric(
-                                        "🌿 Biológico",
-                                        f"{kpi_consol['percentagem_biologica']:.1f}%"
+                                        "🌿 % Biológico",
+                                        f"{kpi_consol['percentagem_biologica']:.1f}%",
+                                        help="Percentagem de ingredientes biológicos usados nas receitas desta ementa"
                                     )
                                 
                                 with col2:
                                     st.metric(
-                                        "♻️ Desperdício",
-                                        f"{kpi_consol['taxa_desperdicio']:.1f}%"
+                                        "♻️ % Desperdício",
+                                        f"{kpi_consol['taxa_desperdicio']:.1f}%",
+                                        help="Percentagem de refeições produzidas que não foram servidas"
                                     )
                                 
                                 with col3:
                                     st.metric(
-                                        "✅ Servido",
-                                        f"{kpi_consol['taxa_servida']:.1f}%"
+                                        "✅ % Servido",
+                                        f"{kpi_consol['taxa_servida']:.1f}%",
+                                        help="Percentagem de refeições servidas face ao produzido"
                                     )
                                 
                                 with col4:
@@ -392,7 +396,7 @@ def pagina_gestor(API_URL, auth_token):
                 
                 # TAB SUSTENTABILIDADE
                 with kpi_tab2:
-                    st.markdown("Percentagem de produtos biológicos utilizados nas ementas")
+                    st.markdown("Percentagem de produtos biológicos utilizados nas ementas (por dia e por refeição)")
                     
                     if st.button("Calcular Sustentabilidade", key="calc_sustent"):
                         with st.spinner("Calculando KPI de sustentabilidade..."):
@@ -416,7 +420,7 @@ def pagina_gestor(API_URL, auth_token):
                                     st.metric("Dias analisados", total_dias)
                                 
                                 st.markdown("---")
-                                st.markdown("#### 📅 Detalhamento por Dia")
+                                st.markdown("#### 📅 Detalhamento por Dia (Almoço vs Jantar)")
                                 
                                 dias_nome = {1: "Segunda-feira", 2: "Terça-feira", 3: "Quarta-feira", 4: "Quinta-feira", 5: "Sexta-feira"}
                                 
@@ -429,7 +433,7 @@ def pagina_gestor(API_URL, auth_token):
                                             st.markdown("**🍽️ Almoço**")
                                             st.progress(min(dia['percentagem_biologica_almoco'] / 100, 1.0))
                                             st.write(f"{dia['percentagem_biologica_almoco']:.1f}% biológico")
-                                        
+
                                         with col_b:
                                             st.markdown("**🌙 Jantar**")
                                             st.progress(min(dia['percentagem_biologica_jantar'] / 100, 1.0))
@@ -438,24 +442,27 @@ def pagina_gestor(API_URL, auth_token):
                                 st.markdown("---")
                                 st.markdown("#### 📊 Gráfico Semanal")
                                 
-                                import pandas as pd
-                                chart_data = pd.DataFrame([
-                                    {
-                                        "Dia": dias_nome.get(dia['dia_semana'], f"Dia {dia['dia_semana']}"),
-                                        "Almoço": dia['percentagem_biologica_almoco'],
-                                        "Jantar": dia['percentagem_biologica_jantar']
-                                    }
-                                    for dia in kpi_data['dias']
-                                ])
-                                
-                                st.bar_chart(chart_data.set_index("Dia"), height=400)
+                                if kpi_data['dias']:
+                                    import pandas as pd
+                                    chart_data = pd.DataFrame([
+                                        {
+                                            "Dia": dias_nome.get(dia['dia_semana'], f"Dia {dia['dia_semana']}"),
+                                            "Almoço": dia['percentagem_biologica_almoco'],
+                                            "Jantar": dia['percentagem_biologica_jantar']
+                                        }
+                                        for dia in kpi_data['dias']
+                                    ])
+                                    
+                                    st.bar_chart(chart_data.set_index("Dia"), height=400)
+                                else:
+                                    st.info("Não há dados de dias para exibir no gráfico. Verifique se a ementa tem refeições cadastradas.")
                                 
                             except Exception as e:
                                 st.error(f"Erro: {str(e)}")
                 
                 # TAB DESPERDÍCIO
                 with kpi_tab3:
-                    st.markdown("Taxa de desperdício e refeições servidas por dia")
+                    st.markdown("Taxa de desperdício (% não servido) e refeições servidas por dia")
                     
                     if st.button("Calcular Desperdício", key="calc_desp"):
                         with st.spinner("Calculando KPI de desperdício..."):
@@ -481,12 +488,13 @@ def pagina_gestor(API_URL, auth_token):
                                     st.metric(
                                         "Não Servido",
                                         f"{kpi_desp['total_nao_servido']}",
-                                        help="Quantidade desperdiçada"
+                                        help="Quantidade produzida que não foi servida"
                                     )
                                 with col4:
                                     st.metric(
-                                        "Taxa Desperdício",
-                                        f"{kpi_desp['taxa_desperdicio_geral']:.1f}%"
+                                        "Taxa Desperdício (% não servido)",
+                                        f"{kpi_desp['taxa_desperdicio_geral']:.1f}%",
+                                        help="Percentagem de refeições não servidas sobre o total produzido"
                                     )
                                 
                                 st.markdown("---")
@@ -495,7 +503,7 @@ def pagina_gestor(API_URL, auth_token):
                                 dias_nome = {1: "Segunda", 2: "Terça", 3: "Quarta", 4: "Quinta", 5: "Sexta"}
                                 
                                 for dia in kpi_desp['dias']:
-                                    with st.expander(f"{dias_nome.get(dia['dia_semana'])} - Desperdício: {dia['taxa_desperdicio_media']:.1f}%"):
+                                    with st.expander(f"{dias_nome.get(dia['dia_semana'])} - Desperdício: {dia['taxa_desperdicio_media']:.1f}% (não servido)"):
                                         col_a, col_b, col_c = st.columns(3)
                                         
                                         with col_a:
@@ -510,17 +518,20 @@ def pagina_gestor(API_URL, auth_token):
                                 st.markdown("---")
                                 st.markdown("#### 📊 Gráfico de Desperdício")
                                 
-                                import pandas as pd
-                                chart_data = pd.DataFrame([
-                                    {
-                                        "Dia": dias_nome.get(dia['dia_semana']),
-                                        "Servido": dia['taxa_servida_media'],
-                                        "Desperdiçado": dia['taxa_desperdicio_media']
-                                    }
-                                    for dia in kpi_desp['dias']
-                                ])
-                                
-                                st.bar_chart(chart_data.set_index("Dia"), height=400)
+                                if kpi_desp['dias']:
+                                    import pandas as pd
+                                    chart_data = pd.DataFrame([
+                                        {
+                                            "Dia": dias_nome.get(dia['dia_semana']),
+                                            "Servido": dia['taxa_servida_media'],
+                                            "Desperdiçado": dia['taxa_desperdicio_media']
+                                        }
+                                        for dia in kpi_desp['dias']
+                                    ])
+                                    
+                                    st.bar_chart(chart_data.set_index("Dia"), height=400)
+                                else:
+                                    st.info("Não há dados de desperdício. Verifique se há execuções de refeições registadas.")
                                 
                                 # Alertas
                                 st.markdown("---")

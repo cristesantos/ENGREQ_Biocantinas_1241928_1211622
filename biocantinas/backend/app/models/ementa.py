@@ -19,6 +19,7 @@ class RefeicaoModel:
     itens: List[ItemRefeicaoModel] = field(default_factory=list)
     receita_id: int | None = None  # Referência à receita do catálogo
     numero_porcoes: int | None = None  # Número de porções planejadas
+    id: int | None = None  # ID da refeição (apenas quando recuperada da BD)
 
 
 @dataclass

@@ -3,14 +3,14 @@ from datetime import date
 from typing import List
 from ..dtos.execucaoRefeicaoDTO import ExecucaoRefeicao, ExecucaoRefeicaoCreate
 from ..services.execucaoRefeicaoService import get_execucaoRefeicao_service
-from ..auth.jwt import get_current_user, require_role
+from ..auth.jwt import get_current_user, require_any_role
 from ..dtos.userDTO import User
 
 router = APIRouter(tags=["execucaoRefeicao"], prefix="/execucaoRefeicao")
 
 
 @router.post("/", response_model=ExecucaoRefeicao)
-def criar_execucao(execucao: ExecucaoRefeicaoCreate, user: User = Depends(require_role("DIETISTA"))):
+def criar_execucao(execucao: ExecucaoRefeicaoCreate, user: User = Depends(require_any_role("DIETISTA", "GESTOR_CANTINA"))):
     svc = get_execucaoRefeicao_service()
     return svc.criar_execucao(execucao)
 
@@ -26,7 +26,7 @@ def listar_execucoes(
 
 
 @router.delete("/{execucao_id}")
-def deletar_execucao(execucao_id: int, user: User = Depends(require_role("DIETISTA"))):
+def deletar_execucao(execucao_id: int, user: User = Depends(require_any_role("DIETISTA", "GESTOR_CANTINA"))):
     svc = get_execucaoRefeicao_service()
     sucesso = svc.deletar_execucao(execucao_id)
     if not sucesso:

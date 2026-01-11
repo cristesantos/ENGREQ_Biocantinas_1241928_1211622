@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 def list_fornecedores(API_URL, auth_token):
     headers = {"Authorization": f"Bearer {auth_token}"}
@@ -64,12 +64,14 @@ def pagina_gestor_cantina(API_URL, auth_token):
 
     st.header("Gestão da Cantina")
     
-    # Criar abas (4 abas reordenadas com emojis)
-    tab1, tab2, tab3, tab4 = st.tabs([
+    # Criar abas (6 abas com nova aba de Comparação)
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🔍 Previsão de Necessidades",
         "📋 Ordem de Fornecimento",
         "📊 Plano de Produção", 
-        "⚠️ Alertas"
+        "⚠️ Alertas",
+        "✅ Registar Execuções",
+        "📈 Comparação Realizado vs Previsto"
     ])
     
     # ============ TAB 1: PREVISÃO DE NECESSIDADES ============
@@ -503,3 +505,334 @@ def pagina_gestor_cantina(API_URL, auth_token):
             st.error(f"Erro ao carregar alertas: {e.response.status_code} - {e.response.text}")
         except Exception as e:
             st.error(f"Erro: {str(e)}")
+    
+    # ============ TAB 5: REGISTAR EXECUÇÕES ============
+    with tab5:
+        st.subheader("✅ Registar Execução de Refeições")
+        st.write("Registe quantas refeições foram servidas e não servidas. A quantidade produzida vem da previsão do plano de produção.")
+        
+        headers = {"Authorization": f"Bearer {auth_token}"}
+        
+        # Listar ementas
+        try:
+            resp_ementas = requests.get(f"{API_URL}/ementas", headers=headers)
+            if resp_ementas.status_code == 200:
+                ementas = resp_ementas.json()
+                
+                if ementas:
+                    # Seletor de ementa
+                    ementa_options = {f"{e['nome']} ({e['data_inicio']} a {e['data_fim']})": e for e in ementas}
+                    selected_ementa_label = st.selectbox("Selecionar Ementa", list(ementa_options.keys()), key="exec_ementa")
+                    selected_ementa = ementa_options[selected_ementa_label]
+                    
+                    st.info(f"📅 Período: {selected_ementa['data_inicio']} a {selected_ementa['data_fim']}")
+                    
+                    # Buscar previsões do plano de produção
+                    try:
+                        data_inicio_ementa = selected_ementa['data_inicio']
+                        data_fim_ementa = selected_ementa['data_fim']
+                        
+                        resp_preview = requests.get(
+                            f"{API_URL}/aprovisionamento/preview",
+                            params={"data_inicio": data_inicio_ementa, "data_fim": data_fim_ementa},
+                            headers=headers
+                        )
+                        
+                        previsoes_por_refeicao = {}
+                        if resp_preview.status_code == 200:
+                            preview_data = resp_preview.json()
+                            for ref in preview_data.get('refeicoes_detalhes', []):
+                                # Chave: (data, tipo)
+                                chave = (ref['data'], ref['tipo'])
+                                previsoes_por_refeicao[chave] = ref.get('previsao_reservas') or 0
+                    except Exception as e:
+                        st.warning(f"Não foi possível carregar previsões: {e}")
+                        previsoes_por_refeicao = {}
+                    
+                    # Listar refeições da ementa
+                    dias_nome = {1: "Segunda", 2: "Terça", 3: "Quarta", 4: "Quinta", 5: "Sexta"}
+                    refeicoes_agrupadas = {}
+                    
+                    for refeicao in selected_ementa.get('refeicoes', []):
+                        dia_key = (refeicao['dia_semana'], dias_nome.get(refeicao['dia_semana'], f"Dia {refeicao['dia_semana']}"))
+                        if dia_key not in refeicoes_agrupadas:
+                            refeicoes_agrupadas[dia_key] = []
+                        refeicoes_agrupadas[dia_key].append(refeicao)
+                    
+                    # Formulário por dia
+                    for (dia_num, dia_label), refeicoes_dia in sorted(refeicoes_agrupadas.items()):
+                        with st.expander(f"📅 {dia_label} (Dia {dia_num})"):
+                            for refeicao in refeicoes_dia:
+                                st.markdown(f"**{refeicao['tipo'].title()}: {refeicao.get('descricao', 'Sem descrição')}**")
+                                
+                                # Calcular data da refeição baseada no dia da semana
+                                data_inicio_obj = datetime.strptime(selected_ementa['data_inicio'], '%Y-%m-%d').date()
+                                data_refeicao = data_inicio_obj
+                                while (data_refeicao.weekday() + 1) != dia_num:
+                                    data_refeicao += timedelta(days=1)
+                                    if data_refeicao > datetime.strptime(selected_ementa['data_fim'], '%Y-%m-%d').date():
+                                        data_refeicao = data_inicio_obj
+                                        break
+                                
+                                # Buscar previsão
+                                chave_previsao = (str(data_refeicao), refeicao['tipo'])
+                                qty_prevista = previsoes_por_refeicao.get(chave_previsao, 0)
+                                
+                                col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+                                
+                                with col1:
+                                    data_execucao = st.date_input(
+                                        "Data da Execução",
+                                        value=data_refeicao,
+                                        key=f"data_exec_{refeicao['id']}"
+                                    )
+                                
+                                with col2:
+                                    qty_prod = st.number_input(
+                                        "Produzido (previsão)",
+                                        min_value=0,
+                                        value=int(qty_prevista) if qty_prevista else 0,
+                                        key=f"prod_{refeicao['id']}",
+                                        help="Quantidade prevista pelo plano de produção"
+                                    )
+                                
+                                with col3:
+                                    qty_serv = st.number_input(
+                                        "Servido",
+                                        min_value=0,
+                                        value=0,
+                                        max_value=qty_prod,
+                                        key=f"serv_{refeicao['id']}"
+                                    )
+                                
+                                with col4:
+                                    qty_nao_serv = st.number_input(
+                                        "Não Servido",
+                                        min_value=0,
+                                        value=0,
+                                        max_value=qty_prod,
+                                        key=f"nao_serv_{refeicao['id']}"
+                                    )
+                                
+                                # Validação em tempo real
+                                if qty_serv + qty_nao_serv != qty_prod:
+                                    st.warning(f"⚠️ Servido ({qty_serv}) + Não Servido ({qty_nao_serv}) = {qty_serv + qty_nao_serv}, deve ser igual a Produzido ({qty_prod})")
+                                
+                                if st.button(f"💾 Registar", key=f"btn_exec_{refeicao['id']}", disabled=(qty_serv + qty_nao_serv != qty_prod)):
+                                    if qty_prod <= 0:
+                                        st.error("Quantidade produzida deve ser maior que 0")
+                                    else:
+                                        try:
+                                            payload = {
+                                                "refeicao_id": refeicao['id'],
+                                                "data_execucao": str(data_execucao),
+                                                "quantidade_prevista": int(qty_prevista) if qty_prevista else None,
+                                                "quantidade_produzida": qty_prod,
+                                                "quantidade_servida": qty_serv,
+                                                "quantidade_nao_servida": qty_nao_serv
+                                            }
+                                            
+                                            resp = requests.post(
+                                                f"{API_URL}/execucaoRefeicao/",
+                                                json=payload,
+                                                headers=headers
+                                            )
+                                            
+                                            if resp.status_code == 200:
+                                                st.success("✅ Execução registada com sucesso!")
+                                                st.rerun()
+                                            else:
+                                                st.error(f"Erro: {resp.status_code} - {resp.json().get('detail', 'Erro desconhecido')}")
+                                        except Exception as e:
+                                            st.error(f"Erro ao registar: {e}")
+                                
+                                st.divider()
+                    
+                    # Histórico de execuções
+                    st.markdown("### 📋 Histórico de Execuções")
+                    data_inicio_ementa = selected_ementa['data_inicio']
+                    data_fim_ementa = selected_ementa['data_fim']
+                    
+                    try:
+                        resp_hist = requests.get(
+                            f"{API_URL}/execucaoRefeicao/",
+                            params={"data_inicio": data_inicio_ementa, "data_fim": data_fim_ementa},
+                            headers=headers
+                        )
+                        
+                        if resp_hist.status_code == 200:
+                            execucoes = resp_hist.json()
+                            
+                            if execucoes:
+                                df_exec = pd.DataFrame([
+                                    {
+                                        "Data": e['data_execucao'],
+                                        "Refeição ID": e['refeicao_id'],
+                                        "Previsto": e.get('quantidade_prevista', '-'),
+                                        "Produzido": e['quantidade_produzida'],
+                                        "Servido": e['quantidade_servida'],
+                                        "Não Servido": e['quantidade_nao_servida'],
+                                        "% Desperdício": f"{(e['quantidade_nao_servida'] / e['quantidade_produzida'] * 100):.1f}%" if e['quantidade_produzida'] > 0 else "0%",
+                                        "Desvio Previsão": f"{(e['quantidade_produzida'] - e.get('quantidade_prevista', e['quantidade_produzida'])):+d}" if e.get('quantidade_prevista') else "-"
+                                    }
+                                    for e in execucoes
+                                ])
+                                st.dataframe(df_exec, use_container_width=True, hide_index=True)
+                            else:
+                                st.info("Ainda não há execuções registadas para esta ementa")
+                        else:
+                            st.error("Erro ao carregar histórico")
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
+                else:
+                    st.info("Ainda não há ementas cadastradas")
+            else:
+                st.error("Erro ao carregar ementas")
+        except Exception as e:
+            st.error(f"Erro: {e}")
+
+    # ============ TAB 6: COMPARAÇÃO REALIZADO VS PREVISTO ============
+    with tab6:
+        st.subheader("📈 Comparação: Realizado vs Previsto")
+        st.write("Analise a execução real em relação ao plano de produção")
+        
+        # Seletor de período
+        col1, col2 = st.columns(2)
+        with col1:
+            data_inicio_relatorio = st.date_input("Data início", value=date.today() - timedelta(days=7))
+        with col2:
+            data_fim_relatorio = st.date_input("Data fim", value=date.today())
+        
+        # Botão para gerar relatório
+        if st.button("📊 Gerar Relatório"):
+            try:
+                headers = {"Authorization": f"Bearer {auth_token}"}
+                
+                response = requests.get(
+                    f"{API_URL}/relatorios/comparacao-execucao",
+                    params={
+                        "data_inicio": str(data_inicio_relatorio),
+                        "data_fim": str(data_fim_relatorio)
+                    },
+                    headers=headers
+                )
+                
+                if response.status_code == 200:
+                    relatorio = response.json()
+                    st.session_state.relatorio_gerado = relatorio
+                else:
+                    st.error(f"❌ Erro {response.status_code}: {response.json().get('detail', 'Erro desconhecido')}")
+            except Exception as e:
+                st.error(f"❌ Erro ao conectar com API: {str(e)}")
+        
+        # Exibir relatório se existe
+        if "relatorio_gerado" in st.session_state:
+            relatorio = st.session_state.relatorio_gerado
+            
+            st.divider()
+            
+            # Resumo geral
+            col1, col2, col3, col4 = st.columns(4)
+            resumo = relatorio.get("resumo", {})
+            
+            with col1:
+                st.metric(
+                    "Produtos Analisados",
+                    resumo.get("produtos_analisados", 0)
+                )
+            with col2:
+                st.metric(
+                    "⬆️ Excesso",
+                    resumo.get("desvios_positivos", 0)
+                )
+            with col3:
+                st.metric(
+                    "⬇️ Falta",
+                    resumo.get("desvios_negativos", 0)
+                )
+            with col4:
+                st.metric(
+                    "🚨 Alertas",
+                    resumo.get("desvios_alerta", 0)
+                )
+            
+            st.divider()
+            
+            # Tabela de detalhes
+            st.markdown("### Detalhes por Produto")
+            
+            if relatorio.get("detalhes"):
+                df_detalhes = pd.DataFrame(relatorio.get("detalhes", []))
+                
+                # Formatar a tabela
+                st.dataframe(
+                    df_detalhes.style.apply(
+                        lambda row: [
+                            'background-color: #ff9999' if row['requer_alerta'] and row['status'] == '⬆️ Excesso' else
+                            'background-color: #ffcc99' if row['requer_alerta'] and row['status'] == '⬇️ Falta' else
+                            'background-color: #99ff99' if not row['requer_alerta'] else ''
+                            for _ in row
+                        ],
+                        axis=1
+                    ),
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                # Análise por status
+                st.markdown("### 📊 Análise de Desvios")
+                
+                df_alertas = df_detalhes[df_detalhes['requer_alerta'] == True]
+                
+                if len(df_alertas) > 0:
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.markdown("#### ⬆️ Produtos com Excesso (>10%)")
+                        excesso = df_alertas[df_alertas['status'] == '⬆️ Excesso']
+                        if len(excesso) > 0:
+                            for _, row in excesso.iterrows():
+                                st.warning(
+                                    f"**{row['produto']}**: +{row['desvio_percentual']}% "
+                                    f"({row['quantidade_realizada']} vs {row['quantidade_prevista']} previsto)"
+                                )
+                        else:
+                            st.info("Nenhum produto com excesso")
+                    
+                    with col2:
+                        st.markdown("#### ⬇️ Produtos com Falta (>10%)")
+                        falta = df_alertas[df_alertas['status'] == '⬇️ Falta']
+                        if len(falta) > 0:
+                            for _, row in falta.iterrows():
+                                st.warning(
+                                    f"**{row['produto']}**: {row['desvio_percentual']}% "
+                                    f"({row['quantidade_realizada']} vs {row['quantidade_prevista']} previsto)"
+                                )
+                        else:
+                            st.info("Nenhum produto com falta")
+                else:
+                    st.success("✅ Nenhum desvio significativo detectado!")
+                
+                # Botão para atualizar plano com consumo real
+                st.divider()
+                if st.button("💾 Atualizar Plano com Consumo Real"):
+                    try:
+                        resp_update = requests.post(
+                            f"{API_URL}/relatorios/atualizar-consumo-realizado",
+                            params={
+                                "data_inicio": str(data_inicio_relatorio),
+                                "data_fim": str(data_fim_relatorio)
+                            },
+                            headers=headers
+                        )
+                        
+                        if resp_update.status_code == 200:
+                            st.success("✅ Plano atualizado com consumo realizado!")
+                            st.rerun()
+                        else:
+                            st.error(f"Erro: {resp_update.json().get('detail', 'Erro desconhecido')}")
+                    except Exception as e:
+                        st.error(f"Erro ao atualizar: {e}")
+            else:
+                st.info("Sem dados de comparação para o período selecionado")
+

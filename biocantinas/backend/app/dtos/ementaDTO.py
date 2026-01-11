@@ -11,6 +11,7 @@ class ItemRefeicao(BaseModel):
 
 
 class Refeicao(BaseModel):
+    id: int | None = None  # ID da refeição (apenas no retorno)
     dia_semana: int  # 1=Segunda, 2=Terça, 3=Quarta, 4=Quinta, 5=Sexta
     tipo: str  # "almoço" ou "jantar"
     descricao: str | None = None

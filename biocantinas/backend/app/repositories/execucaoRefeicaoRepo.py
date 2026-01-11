@@ -13,6 +13,7 @@ class ExecucaoRefeicaoRepo:
         orm = ExecucaoRefeicaoORM(
             refeicao_id=model.refeicao_id,
             data_execucao=model.data_execucao,
+            quantidade_prevista=model.quantidade_prevista,
             quantidade_produzida=model.quantidade_produzida,
             quantidade_servida=model.quantidade_servida,
             quantidade_nao_servida=model.quantidade_nao_servida,
@@ -49,6 +50,7 @@ class ExecucaoRefeicaoRepo:
             id=orm.id,
             refeicao_id=orm.refeicao_id,
             data_execucao=orm.data_execucao,
+            quantidade_prevista=orm.quantidade_prevista,
             quantidade_produzida=orm.quantidade_produzida,
             quantidade_servida=orm.quantidade_servida,
             quantidade_nao_servida=orm.quantidade_nao_servida,

@@ -1,6 +1,11 @@
 from sqlalchemy.orm import Session
 from ..db.models import (
-    RefeicaoORM, ItemRefeicaoORM, EmentaORM, ProdutoFornecedorORM, ExecucaoRefeicaoORM
+    RefeicaoORM,
+    ItemRefeicaoORM,
+    EmentaORM,
+    ProdutoFornecedorORM,
+    ProdutoORM,
+    ExecucaoRefeicaoORM,
 )
 from ..dtos.kpiDTO import (
     RefeicaoKPIDTO, IngredienteKPIDTO, DiaKPIDTO, EmentaKPIDTO,
@@ -40,29 +45,35 @@ class KPIService:
         biologicos_count = 0
         
         for item in itens:
-            # Tentar buscar o produto pelo produto_id se existir
-            produto = None
+            # Primeiro tenta usar o produto fornecedor se já estiver associado
+            produto_fornecedor = None
             if item.produto_id:
-                produto = session.query(ProdutoFornecedorORM).filter(
+                produto_fornecedor = session.query(ProdutoFornecedorORM).filter(
                     ProdutoFornecedorORM.id == item.produto_id
                 ).first()
-            
-            # Se não tem produto_id, tentar buscar pelo nome (mais flexível)
-            if not produto:
-                produto = session.query(ProdutoFornecedorORM).filter(
-                    ProdutoFornecedorORM.nome.ilike(f"%{item.ingrediente}%")
+
+            # Caso não exista ligação direta, tentar mapear pelo nome para o catálogo global
+            if not produto_fornecedor:
+                produto_catalogo = session.query(ProdutoORM).filter(
+                    ProdutoORM.nome.ilike(f"%{item.ingrediente}%")
                 ).first()
-            
-            is_biologico = produto.biologico if produto else False
-            
+
+                if produto_catalogo:
+                    # Buscar um fornecedor para este produto (preferir biológico se houver)
+                    produto_fornecedor = session.query(ProdutoFornecedorORM).filter(
+                        ProdutoFornecedorORM.produto_id == produto_catalogo.id
+                    ).order_by(ProdutoFornecedorORM.biologico.desc()).first()
+
+            is_biologico = produto_fornecedor.biologico if produto_fornecedor else False
+
             if is_biologico:
                 biologicos_count += 1
-            
+
             ingredientes_kpi.append(
                 IngredienteKPIDTO(
                     nome=item.ingrediente,
                     biologico=is_biologico,
-                    fornecedor_id=produto.fornecedor_id if produto else None
+                    fornecedor_id=produto_fornecedor.fornecedor_id if produto_fornecedor else None
                 )
             )
 
@@ -135,13 +146,20 @@ class KPIService:
         
         # Calcular para cada dia da semana (1-5 = Segunda a Sexta)
         for dia_semana in range(1, 6):
-            try:
-                dia_kpi = KPIService.calcular_kpi_dia(session, ementa_id, dia_semana)
-                dias_kpi.append(dia_kpi)
-                percentagens_dias.append(dia_kpi.media_percentagem_biologica)
-            except:
-                # Dia sem refeições, skip
-                pass
+            # Verificar se há refeições para este dia
+            refeicoes_dia = session.query(RefeicaoORM).filter(
+                RefeicaoORM.ementa_id == ementa_id,
+                RefeicaoORM.dia_semana == dia_semana
+            ).all()
+            
+            if refeicoes_dia:
+                try:
+                    dia_kpi = KPIService.calcular_kpi_dia(session, ementa_id, dia_semana)
+                    dias_kpi.append(dia_kpi)
+                    percentagens_dias.append(dia_kpi.media_percentagem_biologica)
+                except Exception as e:
+                    # Log do erro mas continua
+                    print(f"Erro ao calcular KPI dia {dia_semana}: {e}")
         
         media_total = mean(percentagens_dias) if percentagens_dias else 0.0
         

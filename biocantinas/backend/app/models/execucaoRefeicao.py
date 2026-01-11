@@ -7,6 +7,7 @@ class ExecucaoRefeicaoModel:
     id: int
     refeicao_id: int
     data_execucao: date
-    quantidade_produzida: int
-    quantidade_servida: int
-    quantidade_nao_servida: int
+    quantidade_prevista: int | None = None  # Previsão do plano
+    quantidade_produzida: int = 0
+    quantidade_servida: int = 0
+    quantidade_nao_servida: int = 0

@@ -145,6 +145,7 @@ class EmentaRepo:
                 itens=itens,
                 receita_id=ref_orm.receita_id,
                 numero_porcoes=ref_orm.numero_porcoes,
+                id=ref_orm.id,
             ))
         
         return EmentaModel(
