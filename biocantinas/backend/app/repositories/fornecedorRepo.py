@@ -81,31 +81,6 @@ class FornecedorRepo:
 		orm.certificado = f.certificado
 		orm.usuario_id = f.usuario_id
 		
-		# Atualizar produtos: remover antigos e adicionar novos
-		orm.produtos.clear()
-		for p in f.produtos:
-			# Buscar ou criar produto no catálogo
-			produto_catalogo = self.session.query(ProdutoORM).filter_by(nome=p.nome).first()
-			if not produto_catalogo:
-				produto_catalogo = ProdutoORM(
-					nome=p.nome,
-					tipo=p.tipo,
-					unidade_medida=p.unidade_medida,
-					ativo=True
-				)
-				self.session.add(produto_catalogo)
-				self.session.flush()
-			
-			produto_fornecedor = ProdutoFornecedorORM(
-				produto_id=produto_catalogo.id,
-				biologico=p.biologico,
-				semana_producao_inicio=p.semana_producao_inicio,
-				semana_producao_fim=p.semana_producao_fim,
-				capacidade=p.capacidade,
-				unidade_medida=p.unidade_medida,
-				certificado=p.certificado,
-			)
-			orm.produtos.append(produto_fornecedor)
 		# Atualizar estado sanitário
 		estado = self.session.query(FornecedorEstadoORM).filter_by(fornecedor_id=f.id).first()
 		if not estado:
@@ -115,6 +90,7 @@ class FornecedorRepo:
 			estado.em_quarentena = f.em_quarentena
 		if f.freguesia is not None:
 			estado.freguesia = f.freguesia
+		
 		self.session.commit()
 
 	def atualizar_estado(self, fornecedor_id: int, em_quarentena: bool | None, freguesia: str | None) -> None:
