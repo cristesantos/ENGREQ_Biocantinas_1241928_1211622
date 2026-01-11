@@ -79,7 +79,7 @@ def pagina_gestor(API_URL, auth_token):
     st.header("Gestão de Fornecedores")
 
     # Criar abas
-    tab1, tab2, tab3 = st.tabs(["Fornecedores", "Ordem de Fornecimento", "KPIs - Sustentabilidade"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Fornecedores", "Ordem de Fornecimento", "KPIs - Sustentabilidade", "KPIs - Produtores"])
     
     # Aba 1: Fornecedores
     with tab1:
@@ -549,5 +549,132 @@ def pagina_gestor(API_URL, auth_token):
                 
         except requests.exceptions.HTTPError as e:
             st.error(f"Erro ao carregar KPIs: {e.response.status_code} - {e.response.text}")
+        except Exception as e:
+            st.error(f"Erro inesperado: {str(e)}")
+
+    # Aba 4: KPIs de Produtores
+    with tab4:
+        st.header("📊 KPIs de Produtores")
+        st.markdown("Análise de sustentabilidade e qualidade dos produtores da rede")
+        
+        # Carregar fornecedores
+        try:
+            fornecedores = list_fornecedores(API_URL, auth_token)
+            
+            if not fornecedores:
+                st.info("Nenhum produtor cadastrado")
+            else:
+                # Seletor de produtor
+                nomes_produtores = [f"{f['nome']} (#{f['id']})" for f in fornecedores]
+                produtor_selecionado = st.selectbox("Selecione um produtor:", nomes_produtores)
+                
+                if produtor_selecionado:
+                    # Extrair ID do nome selecionado
+                    produtor_id = int(produtor_selecionado.split("(#")[1].split(")")[0])
+                    produtor = next((f for f in fornecedores if f['id'] == produtor_id), None)
+                    
+                    if produtor:
+                        st.divider()
+                        
+                        # Informações gerais do produtor
+                        col1, col2, col3, col4 = st.columns(4)
+                        with col1:
+                            st.metric("📍 Localização", "Local" if produtor.get('local') else "Não local")
+                        with col2:
+                            st.metric("✅ Status", "Aprovado" if produtor.get('aprovado') else "Pendente")
+                        with col3:
+                            st.metric("🛡️ Quarentena", "Sim" if produtor.get('em_quarentena') else "Não")
+                        with col4:
+                            st.metric("📅 Inscrito desde", produtor.get('data_inscricao', 'N/D'))
+                        
+                        st.divider()
+                        
+                        # KPI: % de Produtos Biológicos
+                        st.subheader("🌱 Percentual de Produtos Biológicos")
+                        
+                        produtos = produtor.get('produtos', [])
+                        
+                        if not produtos:
+                            st.info("Este produtor não tem produtos cadastrados")
+                        else:
+                            # Calcular percentual
+                            total_produtos = len(produtos)
+                            produtos_biologicos = sum(1 for p in produtos if p.get('biologico', False))
+                            percentual_biologicos = (produtos_biologicos / total_produtos * 100) if total_produtos > 0 else 0
+                            
+                            # Exibir métrica principal
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Total de Produtos", total_produtos)
+                            with col2:
+                                st.metric("Produtos Biológicos", produtos_biologicos)
+                            with col3:
+                                st.metric("% de Biológicos", f"{percentual_biologicos:.1f}%")
+                            
+                            # Indicador visual
+                            st.progress(percentual_biologicos / 100)
+                            
+                            # Alerta/Sucesso baseado no percentual
+                            if percentual_biologicos >= 80:
+                                st.success(f"✅ Excelente sustentabilidade! {percentual_biologicos:.1f}% dos produtos são biológicos")
+                            elif percentual_biologicos >= 50:
+                                st.info(f"ℹ️ Bom desempenho - {percentual_biologicos:.1f}% dos produtos são biológicos")
+                            elif percentual_biologicos >= 25:
+                                st.warning(f"⚠️ Atenção - Apenas {percentual_biologicos:.1f}% dos produtos são biológicos")
+                            else:
+                                st.error(f"❌ Crítico - Apenas {percentual_biologicos:.1f}% dos produtos são biológicos")
+                            
+                            st.divider()
+                            
+                            # Detalhamento dos produtos
+                            st.subheader("📦 Detalhamento dos Produtos")
+                            
+                            # Separar em abas: Todos, Biológicos, Não-biológicos
+                            col_tab1, col_tab2, col_tab3 = st.tabs(["Todos", "🌱 Biológicos", "❌ Não-biológicos"])
+                            
+                            with col_tab1:
+                                for p in produtos:
+                                    bio_label = "🌱 Biológico" if p.get('biologico') else "❌ Não-biológico"
+                                    with st.expander(f"{p['nome']} - {bio_label}"):
+                                        col_info1, col_info2 = st.columns(2)
+                                        with col_info1:
+                                            st.write(f"**Tipo:** {p.get('tipo', 'N/A')}")
+                                            st.write(f"**Capacidade:** {p.get('capacidade', 'N/A')} {p.get('unidade_medida', 'kg')}")
+                                        with col_info2:
+                                            st.write(f"**Semana produção:** {p.get('semana_producao_inicio', 'N/A')} a {p.get('semana_producao_fim', 'N/A')}")
+                                            st.write(f"**Data inscrição:** {p.get('data_inscricao', 'N/A')}")
+                            
+                            with col_tab2:
+                                produtos_bio = [p for p in produtos if p.get('biologico')]
+                                if produtos_bio:
+                                    for p in produtos_bio:
+                                        with st.expander(f"🌱 {p['nome']}"):
+                                            col_info1, col_info2 = st.columns(2)
+                                            with col_info1:
+                                                st.write(f"**Tipo:** {p.get('tipo', 'N/A')}")
+                                                st.write(f"**Capacidade:** {p.get('capacidade', 'N/A')} {p.get('unidade_medida', 'kg')}")
+                                            with col_info2:
+                                                st.write(f"**Semana produção:** {p.get('semana_producao_inicio', 'N/A')} a {p.get('semana_producao_fim', 'N/A')}")
+                                                st.write(f"**Data inscrição:** {p.get('data_inscricao', 'N/A')}")
+                                else:
+                                    st.info("Este produtor não tem produtos biológicos certificados")
+                            
+                            with col_tab3:
+                                produtos_nao_bio = [p for p in produtos if not p.get('biologico')]
+                                if produtos_nao_bio:
+                                    for p in produtos_nao_bio:
+                                        with st.expander(f"❌ {p['nome']}"):
+                                            col_info1, col_info2 = st.columns(2)
+                                            with col_info1:
+                                                st.write(f"**Tipo:** {p.get('tipo', 'N/A')}")
+                                                st.write(f"**Capacidade:** {p.get('capacidade', 'N/A')} {p.get('unidade_medida', 'kg')}")
+                                            with col_info2:
+                                                st.write(f"**Semana produção:** {p.get('semana_producao_inicio', 'N/A')} a {p.get('semana_producao_fim', 'N/A')}")
+                                                st.write(f"**Data inscrição:** {p.get('data_inscricao', 'N/A')}")
+                                else:
+                                    st.info("Este produtor não tem produtos não-biológicos")
+        
+        except requests.exceptions.HTTPError as e:
+            st.error(f"Erro ao carregar produtores: {e.response.status_code}")
         except Exception as e:
             st.error(f"Erro inesperado: {str(e)}")
