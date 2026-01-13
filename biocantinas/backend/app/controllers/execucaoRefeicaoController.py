@@ -10,7 +10,7 @@ router = APIRouter(tags=["execucaoRefeicao"], prefix="/execucaoRefeicao")
 
 
 @router.post("/", response_model=ExecucaoRefeicao)
-def criar_execucao(execucao: ExecucaoRefeicaoCreate, user: User = Depends(require_any_role("DIETISTA", "GESTOR_CANTINA"))):
+def criar_execucao(execucao: ExecucaoRefeicaoCreate, user: User = Depends(require_any_role("DIETISTA", "GESTOR_CANTINA_CENTRAL"))):
     svc = get_execucaoRefeicao_service()
     return svc.criar_execucao(execucao)
 
@@ -26,7 +26,7 @@ def listar_execucoes(
 
 
 @router.delete("/{execucao_id}")
-def deletar_execucao(execucao_id: int, user: User = Depends(require_any_role("DIETISTA", "GESTOR_CANTINA"))):
+def deletar_execucao(execucao_id: int, user: User = Depends(require_any_role("DIETISTA", "GESTOR_CANTINA_CENTRAL"))):
     svc = get_execucaoRefeicao_service()
     sucesso = svc.deletar_execucao(execucao_id)
     if not sucesso:

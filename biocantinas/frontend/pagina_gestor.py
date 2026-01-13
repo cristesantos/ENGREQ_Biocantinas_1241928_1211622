@@ -75,8 +75,8 @@ def get_kpi_consolidado(API_URL, auth_token, ementa_id):
     r.raise_for_status()
     return r.json()
 
-def pagina_gestor(API_URL, auth_token):
-    st.header("Gestão de Fornecedores")
+def pagina_administrador(API_URL, auth_token):
+    st.header("Painel de Administração - Rede de Biocantinas")
 
     # Criar abas
     tab1, tab2, tab3, tab4 = st.tabs(["Fornecedores", "Ordem de Fornecimento", "KPIs - Sustentabilidade", "KPIs - Produtores"])

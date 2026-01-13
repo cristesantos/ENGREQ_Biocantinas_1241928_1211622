@@ -269,7 +269,7 @@ if not st.session_state.auth_token:
             st.subheader("Criar nova conta")
             reg_username = st.text_input("Usuário", key="reg_username")
             reg_password = st.text_input("Senha", type="password", key="reg_password")
-            reg_role = st.selectbox("Papel", ["GESTOR", "PRODUTOR", "GESTOR_CANTINA", "DIETISTA"], key="reg_role")
+            reg_role = st.selectbox("Papel", ["ADMIN", "PRODUTOR", "GESTOR_CANTINA_CENTRAL", "DIETISTA"], key="reg_role")
             
             # Mostrar formulário adicional para PRODUTOR assim que for selecionado
             if reg_role == "PRODUTOR":
@@ -559,12 +559,12 @@ st.markdown("""
 user_role = str((st.session_state.user_info or {}).get("role", "OUTRO")).upper()
 paginas_disponiveis = []
 
-if user_role == "GESTOR":
-    paginas_disponiveis.append("Gestor")
+if user_role == "ADMIN":
+    paginas_disponiveis.append("Administrador")
 if user_role in ["PRODUTOR", "FORNECEDOR"]:
     paginas_disponiveis.append("Produtor")
-if user_role == "GESTOR_CANTINA":
-    paginas_disponiveis.append("Gestor Cantina")
+if user_role == "GESTOR_CANTINA_CENTRAL":
+    paginas_disponiveis.append("Gestor Cantina Central")
 if user_role == "DIETISTA":
     paginas_disponiveis.append("Dietista")
 
@@ -591,17 +591,17 @@ if pagina == "Página inicial":
 #  8. Páginas importadas
 # ============================================================
 
-elif pagina == "Gestor" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR":
-    from pagina_gestor import pagina_gestor
-    pagina_gestor(API_URL, st.session_state.auth_token)
+elif pagina == "Administrador" and str(st.session_state.user_info.get("role", "")).upper() == "ADMIN":
+    from pagina_gestor import pagina_administrador
+    pagina_administrador(API_URL, st.session_state.auth_token)
 
 elif pagina == "Produtor" and str(st.session_state.user_info.get("role", "")).upper() in ["PRODUTOR", "FORNECEDOR"]:
     from pagina_produtor import pagina_produtor
     pagina_produtor(API_URL, st.session_state.auth_token)
 
-elif pagina == "Gestor Cantina" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_CANTINA":
-    from pagina_gestor_cantina import pagina_gestor_cantina
-    pagina_gestor_cantina(API_URL, st.session_state.auth_token)
+elif pagina == "Gestor Cantina Central" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_CANTINA_CENTRAL":
+    from pagina_gestor_cantina_central import pagina_gestor_cantina_central
+    pagina_gestor_cantina_central(API_URL, st.session_state.auth_token)
 
 elif pagina == "Dietista" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
     from pagina_dietista import pagina_dietista

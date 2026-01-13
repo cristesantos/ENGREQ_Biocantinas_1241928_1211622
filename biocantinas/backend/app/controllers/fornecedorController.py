@@ -99,7 +99,7 @@ def obter_fornecedor(fid: int):
     return f
 
 @router.patch("/fornecedores/{fid}/aprovacao", response_model=Fornecedor)
-def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = Depends(require_role("GESTOR"))):
+def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = Depends(require_role("ADMIN"))):
     svc = get_services()
     try:
         return svc.aprovar_fornecedor(fid, body.aprovado)
@@ -108,7 +108,7 @@ def aprovar_fornecedor(fid: int, body: FornecedorUpdateAprovacao, user: User = D
 
 
 @router.patch("/fornecedores/{fid}/estado", response_model=Fornecedor)
-def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA"))):
+def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: User = Depends(require_any_role("ADMIN", "GESTOR_CANTINA_CENTRAL"))):
     svc = get_services()
     try:
         return svc.atualizar_estado_fornecedor(fid, body)
@@ -117,13 +117,13 @@ def atualizar_estado_fornecedor(fid: int, body: FornecedorEstadoUpdate, user: Us
 
 
 @router.get("/freguesias/fechos", response_model=List[FreguesiaFecho])
-def listar_fechos_freguesia(user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA", "PRODUTOR", "FORNECEDOR"))):
+def listar_fechos_freguesia(user: User = Depends(require_any_role("ADMIN", "GESTOR_CANTINA_CENTRAL", "PRODUTOR", "FORNECEDOR"))):
     svc = get_services()
     return svc.listar_fechos_freguesia(False)
 
 
 @router.patch("/freguesias/fechos", response_model=FreguesiaFecho)
-def definir_fecho_freguesia(body: FreguesiaFecho, user: User = Depends(require_any_role("GESTOR", "GESTOR_CANTINA"))):
+def definir_fecho_freguesia(body: FreguesiaFecho, user: User = Depends(require_any_role("ADMIN", "GESTOR_CANTINA_CENTRAL"))):
     svc = get_services()
     return svc.definir_fecho_freguesia(body.nome, body.ativo)
 

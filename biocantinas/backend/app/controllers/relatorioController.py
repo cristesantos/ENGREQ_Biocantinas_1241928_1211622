@@ -13,7 +13,7 @@ def get_comparacao_execucao(
     data_inicio: date,
     data_fim: date,
     session: Session = Depends(get_db),
-    current_user: dict = Depends(require_role("GESTOR_CANTINA")),
+    current_user: dict = Depends(require_role("GESTOR_CANTINA_CENTRAL")),
 ):
     """
     Retorna comparação entre plano previsto e consumo realizado no período.
@@ -53,7 +53,7 @@ def atualizar_consumo_realizado(
     data_inicio: date,
     data_fim: date,
     session: Session = Depends(get_db),
-    current_user: dict = Depends(require_role("GESTOR_CANTINA")),
+    current_user: dict = Depends(require_role("GESTOR_CANTINA_CENTRAL")),
 ):
     """
     Calcula o consumo real das refeições executadas no período

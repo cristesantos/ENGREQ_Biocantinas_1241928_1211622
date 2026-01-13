@@ -13,7 +13,7 @@ def mostrar_aprovisionamento():
     user_info = st.session_state.get("user_info", {})
     role = user_info.get("role", "")
     
-    if role != "GESTOR_CANTINA":
+    if role != "GESTOR_CANTINA_CENTRAL":
         st.error("⛔ **Acesso Restrito**")
         st.info("Esta página é exclusiva para o Gestor da Cantina.")
         return
@@ -207,6 +207,6 @@ def mostrar_aprovisionamento():
 
 if __name__ == "__main__":
     # Para teste standalone
-    st.session_state["role"] = "GESTOR_CANTINA"
+    st.session_state["role"] = "GESTOR_CANTINA_CENTRAL"
     st.session_state["token"] = "test_token"
     mostrar_aprovisionamento()

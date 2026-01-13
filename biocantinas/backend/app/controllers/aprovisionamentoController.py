@@ -174,10 +174,10 @@ def preview_necessidades(
 def calcular_plano_producao(
     data_inicio: date,
     data_fim: date,
-    user: User = Depends(require_role("GESTOR_CANTINA"))
+    user: User = Depends(require_role("GESTOR_CANTINA_CENTRAL"))
 ):
     """
-    [GESTOR_CANTINA] Calcula e SALVA o plano de produção final.
+    [GESTOR_CANTINA_CENTRAL] Calcula e SALVA o plano de produção final.
     
     Processo:
     1. Calcula necessidades da ementa
@@ -201,10 +201,10 @@ def gerar_pedidos_fornecedores(
     data_inicio: date,
     data_fim: date,
     data_entrega: date,
-    user: User = Depends(require_role("GESTOR_CANTINA"))
+    user: User = Depends(require_role("GESTOR_CANTINA_CENTRAL"))
 ):
     """
-    [GESTOR_CANTINA] Gera pedidos aos fornecedores aprovados.
+    [GESTOR_CANTINA_CENTRAL] Gera pedidos aos fornecedores aprovados.
     
     Ordem de prioridade baseada na data de inscrição:
     - Fornecedor mais antigo = prioridade 1
@@ -223,9 +223,9 @@ def gerar_pedidos_fornecedores(
 
 
 @router.get("/alertas")
-def listar_alertas(user: User = Depends(require_role("GESTOR_CANTINA"))):
+def listar_alertas(user: User = Depends(require_role("GESTOR_CANTINA_CENTRAL"))):
     """
-    [GESTOR_CANTINA] Lista todos os alertas de desvio > 10%.
+    [GESTOR_CANTINA_CENTRAL] Lista todos os alertas de desvio > 10%.
     """
     service = get_aprovisionamento_service()
     alertas = service.listar_alertas()
@@ -239,10 +239,10 @@ def listar_alertas(user: User = Depends(require_role("GESTOR_CANTINA"))):
 @router.get("/pedidos")
 def listar_pedidos(
     status: str | None = None,
-    user: User = Depends(require_role("GESTOR_CANTINA"))
+    user: User = Depends(require_role("GESTOR_CANTINA_CENTRAL"))
 ):
     """
-    [GESTOR_CANTINA] Lista pedidos aos fornecedores.
+    [GESTOR_CANTINA_CENTRAL] Lista pedidos aos fornecedores.
     Pode filtrar por status: pendente, confirmado, entregue
     """
     service = get_aprovisionamento_service()
@@ -273,10 +273,10 @@ def listar_pedidos(
 def atualizar_status_pedido(
     pedido_id: int,
     novo_status: str,
-    user: User = Depends(require_role("GESTOR_CANTINA"))
+    user: User = Depends(require_role("GESTOR_CANTINA_CENTRAL"))
 ):
     """
-    [GESTOR_CANTINA] Atualiza status de um pedido.
+    [GESTOR_CANTINA_CENTRAL] Atualiza status de um pedido.
     Status válidos: pendente, confirmado, entregue
     """
     service = get_aprovisionamento_service()

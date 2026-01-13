@@ -5,13 +5,13 @@ from enum import Enum
 class User(BaseModel):
     id: int
     username: str
-    role: str  # "GESTOR" or "PRODUTOR"
+    role: str  # "ADMIN", "DIETISTA", "GESTOR_CANTINA_CENTRAL", "PRODUTOR" or "FORNECEDOR"
 
 
 class UserCreate(BaseModel):
     username: str
     password: str = Field(..., max_length=72, description="Password (max 72 characters due to bcrypt limitation)")
-    role: str  # "GESTOR" or "PRODUTOR"
+    role: str  # "ADMIN", "DIETISTA", "GESTOR_CANTINA_CENTRAL", "PRODUTOR" or "FORNECEDOR"
 
 
 class Role(str, Enum):

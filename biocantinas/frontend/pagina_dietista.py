@@ -144,7 +144,7 @@ def _render_ementa(ementa: dict, API_URL: str | None = None, headers: dict | Non
         try:
             resp_rec = requests.get(
                 f"{API_URL}/receitas/disponiveis",
-                params={"semana": semana_ementa},
+                params={"semana": semana_ementa, "data": data_inicio_default.isoformat()},
                 headers=headers,
             )
             if resp_rec.status_code == 200:

@@ -55,7 +55,8 @@ def create_users(session):
     print("\n👤 Criando usuários...")
     
     users = [
-        UserORM(username="gestor", hashed_password=pwd_context.hash("1"), role="GESTOR_CANTINA", is_active=True),
+        UserORM(username="admin", hashed_password=pwd_context.hash("1"), role="ADMIN", is_active=True),
+        UserORM(username="gestor_cantina_central", hashed_password=pwd_context.hash("1"), role="GESTOR_CANTINA_CENTRAL", is_active=True),
         UserORM(username="dietista", hashed_password=pwd_context.hash("1"), role="DIETISTA", is_active=True),
         UserORM(username="aluno1", hashed_password=pwd_context.hash("1"), role="ALUNO", is_active=True),
         UserORM(username="aluno2", hashed_password=pwd_context.hash("1"), role="ALUNO", is_active=True),
@@ -1374,7 +1375,8 @@ def main():
         print(f"  - Histórico Pratos: {session.query(HistoricoReservasPratoORM).count()}")
         
         print("\n👤 Credenciais:")
-        print("  - Gestor Cantina: gestor / 1")
+        print("  - Admin: admin / 1")
+        print("  - Gestor Cantina Central: gestor_cantina_central / 1")
         print("  - Dietista: dietista / 1")
         print("  - Aluno 1: aluno1 / 1")
         print("  - Aluno 2: aluno2 / 1")

@@ -210,7 +210,7 @@ class AprovisionamentoService:
         """
         ETAPA 3: Fluxo completo do aprovisionamento (PLANO FINAL COM RESERVAS REAIS)
         
-        Este método é usado quando o GESTOR_CANTINA calcula o plano de produção final.
+        Este método é usado quando o GESTOR_CANTINA_CENTRAL calcula o plano de produção final.
         Usa RESERVAS REAIS já feitas pelos estudantes, não previsão histórica.
         
         1. Calcula necessidades base (ementa planejada)

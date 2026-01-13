@@ -36,9 +36,15 @@ class ReceitaService:
         receitas = self.repository.listar_receitas(apenas_ativas)
         return [ReceitaMapper.model_to_dto(r) for r in receitas]
 
-    def listar_receitas_disponiveis_semana(self, semana: int, tipo: str | None = None) -> List[ReceitaDTO]:
-        """Lista receitas cujos ingredientes estão disponíveis na semana indicada."""
-        produtos_disponiveis = self._produtos_disponiveis_semana(semana)
+    def listar_receitas_disponiveis_semana(self, semana: int, tipo: str | None = None, data: 'date | None' = None) -> List[ReceitaDTO]:
+        """Lista receitas cujos ingredientes estão disponíveis na semana indicada.
+        
+        Args:
+            semana: número da semana ISO (1-52)
+            tipo: opcional para filtrar por tipo de refeição
+            data: data opcional para validar o ano (evita receitas em anos sem produtos)
+        """
+        produtos_disponiveis = self._produtos_disponiveis_semana(semana, data)
         receitas = self.repository.listar_receitas(apenas_ativas=True)
         if tipo:
             receitas = [r for r in receitas if r.tipo_refeicao in [tipo, "ambos"]]
@@ -120,8 +126,25 @@ class ReceitaService:
             if not produto.ativo:
                 raise ValueError(f"Produto '{produto.nome}' está inativo")
 
-    def _produtos_disponiveis_semana(self, semana: int) -> dict:
-        """Obtém produtos aprovados disponíveis na semana (considera intervalos circulares)."""
+    def _produtos_disponiveis_semana(self, semana: int, data: 'date | None' = None) -> dict:
+        """Obtém produtos aprovados disponíveis na semana (considera intervalos circulares e ano).
+        
+        IMPORTANTE: Se data for fornecida, valida que o ano está dentro do intervalo permitido.
+        Sem dados para anos muito distantes no futuro, retorna dict vazio.
+        
+        Args:
+            semana: número da semana ISO (1-52)
+            data: data opcional para validar o ano (evita produtos de anos sem dados)
+        """
+        from datetime import date as date_class
+        
+        # Validação de ano se data foi fornecida
+        if data:
+            ano_solicitado = data.year
+            ano_atual = date_class.today().year
+            if ano_solicitado > ano_atual + 1:
+                return {}  # Sem produtos para anos muito distantes
+        
         repo = FornecedorRepo(self.session)
         fornecedores = repo.listar_fornecedores()
         aprovados = [f for f in fornecedores if f.aprovado and not f.em_quarentena]

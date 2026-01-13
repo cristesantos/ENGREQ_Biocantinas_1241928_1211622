@@ -3,6 +3,7 @@ Controller para Receitas
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
+from datetime import date
 from sqlalchemy.orm import Session
 from ..db.session import get_db
 from ..dtos.receitaDTO import ReceitaDTO, ReceitaCreateDTO, ReceitaUpdateDTO
@@ -19,8 +20,8 @@ def criar_receita(
     current_user: dict = Depends(get_current_user)
 ):
     """Cria uma nova receita no catálogo"""
-    # Apenas dietistas e gestores podem criar receitas
-    if current_user["role"] not in ["dietista", "gestor"]:
+    # Apenas dietistas e admins podem criar receitas
+    if current_user["role"] not in ["dietista", "admin"]:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     try:
@@ -49,6 +50,7 @@ def listar_receitas(
 @router.get("/disponiveis", response_model=List[ReceitaDTO])
 def listar_receitas_disponiveis(
     semana: int,
+    data: date | None = None,
     tipo: str | None = None,
     session: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -57,6 +59,7 @@ def listar_receitas_disponiveis(
 
     Args:
         semana: número da semana ISO (1-52)
+        data: data opcional para validar o ano (para evitar receitas em anos sem produtos)
         tipo: opcional ("almoço" ou "jantar") para filtrar
     """
     if not (1 <= semana <= 52):
@@ -65,7 +68,7 @@ def listar_receitas_disponiveis(
         raise HTTPException(status_code=400, detail="Tipo deve ser 'almoço', 'jantar' ou 'ambos'")
     try:
         service = ReceitaService(session)
-        return service.listar_receitas_disponiveis_semana(semana, tipo)
+        return service.listar_receitas_disponiveis_semana(semana, tipo, data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao listar receitas disponíveis: {str(e)}")
 
@@ -99,8 +102,8 @@ def atualizar_receita(
     current_user: dict = Depends(get_current_user)
 ):
     """Atualiza uma receita existente"""
-    # Apenas dietistas e gestores podem atualizar receitas
-    if current_user["role"] not in ["dietista", "gestor"]:
+    # Apenas dietistas e admins podem atualizar receitas
+    if current_user["role"] not in ["dietista", "admin"]:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     try:
@@ -126,8 +129,8 @@ def deletar_receita(
     current_user: dict = Depends(get_current_user)
 ):
     """Deleta (desativa) uma receita"""
-    # Apenas dietistas e gestores podem deletar receitas
-    if current_user["role"] not in ["dietista", "gestor"]:
+    # Apenas dietistas e admins podem deletar receitas
+    if current_user["role"] not in ["dietista", "admin"]:
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     try:

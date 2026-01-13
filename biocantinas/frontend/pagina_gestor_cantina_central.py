@@ -48,7 +48,7 @@ def patch_fecho(API_URL, auth_token, nome: str, ativo: bool):
     r.raise_for_status()
     return r.json()
 
-def pagina_gestor_cantina(API_URL, auth_token):
+def pagina_gestor_cantina_central(API_URL, auth_token):
     # Aumenta fonte das abas via CSS customizado
     st.markdown(
         """
@@ -62,7 +62,7 @@ def pagina_gestor_cantina(API_URL, auth_token):
         unsafe_allow_html=True,
     )
 
-    st.header("Gestão da Cantina")
+    st.header("Gestão da Cantina Central - Aprovisionamento e Refeitórios")
     
     # Criar abas (6 abas com nova aba de Comparação)
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([

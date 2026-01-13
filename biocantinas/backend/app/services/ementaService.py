@@ -69,8 +69,8 @@ class EmentaService:
         # Calcular semana do ano para verificar produtos sazonais
         semana_ementa = data_inicio.isocalendar()[1]
         
-        # Obter produtos disponíveis PARA ESSA SEMANA específica
-        produtos_disponiveis = self._obter_produtos_disponiveis_dict(semana_ementa)
+        # Obter produtos disponíveis PARA ESSA SEMANA E ANO específicos
+        produtos_disponiveis = self._obter_produtos_disponiveis_dict(data_inicio, semana_ementa)
         
         # Obter receitas disponíveis (que podem ser feitas com os produtos)
         receitas_almoco = self.receita_repo.listar_receitas_por_tipo("almoço")
@@ -119,14 +119,30 @@ class EmentaService:
         stored = self.repo.criar_ementa(model)
         return self._model_to_dto(stored)
 
-    def _obter_produtos_disponiveis_dict(self, semana_ano: int) -> dict:
+    def _obter_produtos_disponiveis_dict(self, data_inicio: date, semana_ano: int) -> dict:
         """
         Retorna dicionário com produtos disponíveis {nome: True}
-        Considera apenas produtos sazonais disponíveis na semana especificada
+        Considera apenas produtos sazonais disponíveis na semana especificada.
+        
+        IMPORTANTE: Valida que os produtos estão realmente disponíveis naquele ANO específico,
+        não apenas naquela semana. Produtos cadastrados em anos anteriores são considerados
+        disponíveis para anos subsequentes, mas não para anos muito distantes no futuro.
         
         Args:
+            data_inicio: Data de início da ementa (para validar o ano)
             semana_ano: Semana do ano (1-52) para verificar disponibilidade
         """
+        from datetime import date as date_class
+        
+        ano_ementa = data_inicio.year
+        ano_atual = date_class.today().year
+        
+        # Validação: rejeitar ementas para anos muito distantes sem produtos registados
+        # Se a ementa é para mais de 1 ano no futuro, considerar falta de dados
+        # (permite apenas ano atual + próximo ano)
+        if ano_ementa > ano_atual + 1:
+            return {}  # Sem produtos disponíveis - nenhum fornecedor registou dados para tão longe
+        
         fornecedores = self.fornecedor_repo.listar_fornecedores()
         aprovados = [f for f in fornecedores if f.aprovado]
         
