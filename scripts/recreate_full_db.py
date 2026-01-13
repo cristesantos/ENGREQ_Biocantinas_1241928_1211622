@@ -10,10 +10,10 @@ import os
 from datetime import date, timedelta, datetime
 from biocantinas.backend.app.db.session import SessionLocal, engine, init_db
 from biocantinas.backend.app.db.models import (
-    Base, UserORM, FornecedorORM, FornecedorEstadoORM, ProdutoORM, ProdutoFornecedorORM, 
+    Base, UserORM, FornecedorORM, FornecedorEstadoORM, ProdutoORM, ProdutoFornecedorORM,
     EmentaORM, RefeicaoORM, ItemRefeicaoORM, ReservaRefeicaoORM,
     HistoricoRefeicoesDiaORM, HistoricoReservasPratoORM, ExecucaoRefeicaoORM,
-    ReceitaORM, ItemReceitaORM
+    ReceitaORM, ItemReceitaORM, CantinaORM, RefeitorioORM
 )
 from biocantinas.backend.app.models.catalogo_produtos import CATALOGO_PRODUTOS
 from passlib.context import CryptContext
@@ -54,9 +54,13 @@ def create_users(session):
     """Criar usuários do sistema"""
     print("\n👤 Criando usuários...")
     
+    # Note: Inicialmente, gestores não têm cantina_id/refeitorio_id. 
+    # Serão preenchidos depois de criar as unidades.
     users = [
         UserORM(username="admin", hashed_password=pwd_context.hash("1"), role="ADMIN", is_active=True),
         UserORM(username="gestor_cantina_central", hashed_password=pwd_context.hash("1"), role="GESTOR_CANTINA_CENTRAL", is_active=True),
+        UserORM(username="gestor_cantina", hashed_password=pwd_context.hash("1"), role="GESTOR_CANTINA", is_active=True),
+        UserORM(username="gestor_refeitorio", hashed_password=pwd_context.hash("1"), role="GESTOR_REFEITORIO", is_active=True),
         UserORM(username="dietista", hashed_password=pwd_context.hash("1"), role="DIETISTA", is_active=True),
         UserORM(username="aluno1", hashed_password=pwd_context.hash("1"), role="ALUNO", is_active=True),
         UserORM(username="aluno2", hashed_password=pwd_context.hash("1"), role="ALUNO", is_active=True),
@@ -80,6 +84,70 @@ def create_users(session):
     
     # Return users for linking with suppliers
     return {user.username: user.id for user in users}
+
+
+def create_unidades(session, user_ids):
+    """Criar unidades de Cantina e Refeitório para testes."""
+    print("\n🏢 Criando cantinas e refeitórios...")
+
+    # Cantina central
+    cantina_central = CantinaORM(
+        nome="Cantina Central",
+        localizacao="Campus Central",
+        tipo="CENTRAL",
+        gestor_id=user_ids.get("gestor_cantina_central")
+    )
+    session.add(cantina_central)
+    session.flush()
+
+    # Refeitório principal da cantina central
+    refeitorio_central = RefeitorioORM(
+        nome="Refeitório Principal",
+        localizacao="Bloco A",
+        gestor_id=user_ids.get("gestor_refeitorio"),
+        cantina_id=cantina_central.id
+    )
+    session.add(refeitorio_central)
+    session.flush()
+
+    # Cantina local
+    cantina_local = CantinaORM(
+        nome="Cantina Local Porto",
+        localizacao="Polo Porto",
+        tipo="LOCAL",
+        gestor_id=user_ids.get("gestor_cantina")
+    )
+    session.add(cantina_local)
+    session.flush()
+
+    # Refeitório da cantina local
+    refeitorio_local = RefeitorioORM(
+        nome="Refeitório Porto",
+        localizacao="Edifício Norte",
+        gestor_id=user_ids.get("gestor_refeitorio"),
+        cantina_id=cantina_local.id
+    )
+    session.add(refeitorio_local)
+    session.flush()
+
+    # **Atualizar users com suas atribuições de cantina/refeitório**
+    # GESTOR_CANTINA_CENTRAL → cantina central
+    gestor_cc = session.query(UserORM).filter(UserORM.username == "gestor_cantina_central").first()
+    if gestor_cc:
+        gestor_cc.cantina_id = cantina_central.id
+    
+    # GESTOR_CANTINA → cantina local
+    gestor_c = session.query(UserORM).filter(UserORM.username == "gestor_cantina").first()
+    if gestor_c:
+        gestor_c.cantina_id = cantina_local.id
+    
+    # GESTOR_REFEITORIO → refeitório central
+    gestor_r = session.query(UserORM).filter(UserORM.username == "gestor_refeitorio").first()
+    if gestor_r:
+        gestor_r.refeitorio_id = refeitorio_central.id
+    
+    session.commit()
+    print("✅ Cantinas e refeitórios criados (central + local)")
 
 
 def create_fornecedores(session, user_ids):
@@ -369,27 +437,35 @@ def create_ementas(session):
         print("⚠️  Nenhuma receita encontrada. Nenhuma ementa será criada.")
         return
     
-    # Criar uma ementa simples para dezembro e janeiro
+    # Localizar cantinas
+    cantina_central = session.query(CantinaORM).filter(CantinaORM.tipo == "CENTRAL").first()
+    cantina_local = session.query(CantinaORM).filter(CantinaORM.tipo == "LOCAL").first()
+
+    # Criar ementas divididas entre cantina central e local
     ementas_dados = [
         {
             "nome": "Ementa Semana 10-16 Dez",
             "data_inicio": date(2025, 12, 10),
-            "data_fim": date(2025, 12, 16)
+            "data_fim": date(2025, 12, 16),
+            "cantina": cantina_central
         },
         {
             "nome": "Ementa Semana 17-23 Dez",
             "data_inicio": date(2025, 12, 17),
-            "data_fim": date(2025, 12, 23)
+            "data_fim": date(2025, 12, 23),
+            "cantina": cantina_local or cantina_central
         },
         {
             "nome": "Ementa Semana 6-12 Jan",
             "data_inicio": date(2026, 1, 6),
-            "data_fim": date(2026, 1, 12)
+            "data_fim": date(2026, 1, 12),
+            "cantina": cantina_central
         },
         {
             "nome": "Ementa Semana 13-19 Jan",
             "data_inicio": date(2026, 1, 13),
-            "data_fim": date(2026, 1, 19)
+            "data_fim": date(2026, 1, 19),
+            "cantina": cantina_local or cantina_central
         }
     ]
     
@@ -399,7 +475,8 @@ def create_ementas(session):
         ementa = EmentaORM(
             nome=ementa_data["nome"],
             data_inicio=ementa_data["data_inicio"],
-            data_fim=ementa_data["data_fim"]
+            data_fim=ementa_data["data_fim"],
+            cantina_id=(ementa_data.get("cantina").id if ementa_data.get("cantina") else None)
         )
         session.add(ementa)
         session.flush()
@@ -1290,8 +1367,13 @@ def create_execucoes(session):
     
     today = date.today()
     
-    # Buscar algumas refeições para criar execuções
-    refeicoes = session.query(RefeicaoORM).limit(14).all()
+    # Criar execuções para TODAS as refeições existentes (evita ementas sem dados)
+    refeicoes = session.query(RefeicaoORM).all()
+
+    # mapear refeitórios
+    refeitorio_central = session.query(RefeitorioORM).join(CantinaORM).filter(CantinaORM.tipo == "CENTRAL").first()
+    refeitorio_local = session.query(RefeitorioORM).join(CantinaORM).filter(CantinaORM.tipo == "LOCAL").first()
+    refeitorios_lista = [r for r in [refeitorio_central, refeitorio_local] if r]
     
     execucoes = []
     for idx, refeicao in enumerate(refeicoes):
@@ -1310,9 +1392,17 @@ def create_execucoes(session):
             serv = 65
             nao_serv = 35
         
+        destino_refeitorio = refeitorios_lista[idx % len(refeitorios_lista)] if refeitorios_lista else None
+
+        # Usar a data da ementa para distribuir as execuções na semana correta
+        base_data = refeicao.ementa.data_inicio if hasattr(refeicao, "ementa") and refeicao.ementa else today
+        data_execucao = base_data + timedelta(days=max(refeicao.dia_semana - 1, 0))
+
         exec_refeicao = ExecucaoRefeicaoORM(
             refeicao_id=refeicao.id,
-            data_execucao=today - timedelta(days=1),
+            refeitorio_id=destino_refeitorio.id if destino_refeitorio else None,
+            data_execucao=data_execucao,
+            quantidade_prevista=prod,
             quantidade_produzida=prod,
             quantidade_servida=serv,
             quantidade_nao_servida=nao_serv
@@ -1352,6 +1442,7 @@ def main():
     
     try:
         user_ids = create_users(session)
+        create_unidades(session, user_ids)
         create_fornecedores(session, user_ids)
         create_receitas(session)
         create_ementas(session)
@@ -1377,6 +1468,8 @@ def main():
         print("\n👤 Credenciais:")
         print("  - Admin: admin / 1")
         print("  - Gestor Cantina Central: gestor_cantina_central / 1")
+        print("  - Gestor Cantina: gestor_cantina / 1")
+        print("  - Gestor Refeitório: gestor_refeitorio / 1")
         print("  - Dietista: dietista / 1")
         print("  - Aluno 1: aluno1 / 1")
         print("  - Aluno 2: aluno2 / 1")

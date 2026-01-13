@@ -76,6 +76,15 @@ def get_kpi_consolidado(API_URL, auth_token, ementa_id):
     return r.json()
 
 def pagina_administrador(API_URL, auth_token):
+    # Verificar se user é ADMIN
+    user_info = st.session_state.get("user_info", {})
+    user_role = str(user_info.get("role", "")).upper()
+    is_admin = user_role == "ADMIN"
+    
+    if not is_admin:
+        st.error("❌ Acesso negado. Esta página é apenas para administradores.")
+        st.stop()
+    
     st.header("Painel de Administração - Rede de Biocantinas")
 
     # Criar abas

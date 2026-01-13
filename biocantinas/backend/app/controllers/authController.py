@@ -13,6 +13,8 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     role: str
     username: str
+    cantina_id: int | None = None
+    refeitorio_id: int | None = None
 
 
 class SignupCredentials(BaseModel):
@@ -46,5 +48,11 @@ def login(payload: LoginCredentials):
 	if not user:
 		raise HTTPException(status_code=401, detail="Credenciais inválidas")
 	token = create_access_token(user)
-	return TokenResponse(access_token=token, role=user.role, username=user.username)
+	return TokenResponse(
+		access_token=token,
+		role=user.role,
+		username=user.username,
+		cantina_id=user.cantina_id,
+		refeitorio_id=user.refeitorio_id
+	)
 

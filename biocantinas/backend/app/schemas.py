@@ -5,11 +5,13 @@ from enum import Enum
 
 
 class Role(str, Enum):
-    gestor = "gestor"
-    produtor = "produtor"
-    gestor_cantina = "gestor_cantina"
-    nutricionista = "nutricionista"
-    outro = "outro"
+    admin = "ADMIN"
+    dietista = "DIETISTA"
+    gestor_cantina_central = "GESTOR_CANTINA_CENTRAL"
+    gestor_cantina = "GESTOR_CANTINA"
+    gestor_refeitorio = "GESTOR_REFEITORIO"
+    produtor = "PRODUTOR"
+    fornecedor = "FORNECEDOR"
 
 
 class ProdutoFornecedor(BaseModel):

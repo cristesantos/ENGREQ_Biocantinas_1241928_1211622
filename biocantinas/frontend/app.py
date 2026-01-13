@@ -119,7 +119,9 @@ def login(username: str, password: str):
             role = str(data.get("role", "OUTRO")).upper()
             st.session_state.user_info = {
                 "username": data.get("username", username),
-                "role": role
+                "role": role,
+                "cantina_id": data.get("cantina_id"),
+                "refeitorio_id": data.get("refeitorio_id")
             }
             st.success("Login realizado com sucesso!")
             st.rerun()  # Recarrega para exibir a sidebar
@@ -269,7 +271,7 @@ if not st.session_state.auth_token:
             st.subheader("Criar nova conta")
             reg_username = st.text_input("Usuário", key="reg_username")
             reg_password = st.text_input("Senha", type="password", key="reg_password")
-            reg_role = st.selectbox("Papel", ["ADMIN", "PRODUTOR", "GESTOR_CANTINA_CENTRAL", "DIETISTA"], key="reg_role")
+            reg_role = st.selectbox("Papel", ["ADMIN", "PRODUTOR", "GESTOR_CANTINA_CENTRAL", "GESTOR_CANTINA", "GESTOR_REFEITORIO", "DIETISTA"], key="reg_role")
             
             # Mostrar formulário adicional para PRODUTOR assim que for selecionado
             if reg_role == "PRODUTOR":
@@ -561,10 +563,16 @@ paginas_disponiveis = []
 
 if user_role == "ADMIN":
     paginas_disponiveis.append("Administrador")
+    paginas_disponiveis.append("Dashboard KPI Consolidado")
 if user_role in ["PRODUTOR", "FORNECEDOR"]:
     paginas_disponiveis.append("Produtor")
 if user_role == "GESTOR_CANTINA_CENTRAL":
     paginas_disponiveis.append("Gestor Cantina Central")
+    paginas_disponiveis.append("Dashboard KPI")
+if user_role == "GESTOR_CANTINA":
+    paginas_disponiveis.append("Gestor Cantina")
+if user_role == "GESTOR_REFEITORIO":
+    paginas_disponiveis.append("Gestor Refeitório")
 if user_role == "DIETISTA":
     paginas_disponiveis.append("Dietista")
 
@@ -595,6 +603,10 @@ elif pagina == "Administrador" and str(st.session_state.user_info.get("role", ""
     from pagina_gestor import pagina_administrador
     pagina_administrador(API_URL, st.session_state.auth_token)
 
+elif pagina == "Dashboard KPI Consolidado" and str(st.session_state.user_info.get("role", "")).upper() == "ADMIN":
+    from pagina_gestor_central_kpi import pagina_administrador_kpi
+    pagina_administrador_kpi(API_URL, st.session_state.auth_token)
+
 elif pagina == "Produtor" and str(st.session_state.user_info.get("role", "")).upper() in ["PRODUTOR", "FORNECEDOR"]:
     from pagina_produtor import pagina_produtor
     pagina_produtor(API_URL, st.session_state.auth_token)
@@ -603,9 +615,22 @@ elif pagina == "Gestor Cantina Central" and str(st.session_state.user_info.get("
     from pagina_gestor_cantina_central import pagina_gestor_cantina_central
     pagina_gestor_cantina_central(API_URL, st.session_state.auth_token)
 
+elif pagina == "Dashboard KPI" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_CANTINA_CENTRAL":
+    from pagina_gestor_central_kpi import pagina_administrador_kpi
+    pagina_administrador_kpi(API_URL, st.session_state.auth_token)
+
 elif pagina == "Dietista" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
     from pagina_dietista import pagina_dietista
     pagina_dietista(API_URL, st.session_state.auth_token)
+
+# Páginas específicas para novos gestores
+elif pagina == "Gestor Cantina" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_CANTINA":
+    from pagina_gestor_cantina_dashboard import pagina_gestor_cantina
+    pagina_gestor_cantina(API_URL, st.session_state.auth_token)
+
+elif pagina == "Gestor Refeitório" and str(st.session_state.user_info.get("role", "")).upper() == "GESTOR_REFEITORIO":
+    from pagina_gestor_refeitorio_dashboard import pagina_gestor_refeitorio
+    pagina_gestor_refeitorio(API_URL, st.session_state.auth_token)
 
 elif pagina == "Catálogo de Receitas" and str(st.session_state.user_info.get("role", "")).upper() == "DIETISTA":
     from pagina_gestao_receitas import pagina_gestao_receitas

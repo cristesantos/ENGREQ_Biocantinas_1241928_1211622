@@ -9,6 +9,7 @@ class ExecucaoRefeicaoCreate(BaseModel):
     quantidade_produzida: int
     quantidade_servida: int
     quantidade_nao_servida: int
+    refeitorio_id: int | None = None
 
 
 class ExecucaoRefeicao(BaseModel):
@@ -19,3 +20,4 @@ class ExecucaoRefeicao(BaseModel):
     quantidade_produzida: int
     quantidade_servida: int
     quantidade_nao_servida: int
+    refeitorio_id: int | None = None

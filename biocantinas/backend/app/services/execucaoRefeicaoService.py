@@ -21,6 +21,7 @@ class ExecucaoRefeicaoService:
             quantidade_produzida=data.quantidade_produzida,
             quantidade_servida=data.quantidade_servida,
             quantidade_nao_servida=data.quantidade_nao_servida,
+            refeitorio_id=data.refeitorio_id,
         )
         stored = self.repo.criar(model)
         return self._model_to_dto(stored)
@@ -41,6 +42,7 @@ class ExecucaoRefeicaoService:
             quantidade_produzida=model.quantidade_produzida,
             quantidade_servida=model.quantidade_servida,
             quantidade_nao_servida=model.quantidade_nao_servida,
+            refeitorio_id=model.refeitorio_id,
         )
 
 

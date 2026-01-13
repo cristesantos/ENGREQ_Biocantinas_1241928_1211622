@@ -14,6 +14,7 @@ class EmentaRepo:
             nome=model.nome,
             data_inicio=model.data_inicio,
             data_fim=model.data_fim,
+            cantina_id=model.cantina_id,
         )
         
         # Criar refeições
@@ -62,6 +63,7 @@ class EmentaRepo:
         orm.nome = model.nome
         orm.data_inicio = model.data_inicio
         orm.data_fim = model.data_fim
+        orm.cantina_id = model.cantina_id
         
         # Remover refeições antigas e criar novas
         # (simplificado - em produção, considerar update inteligente)
@@ -153,5 +155,6 @@ class EmentaRepo:
             nome=orm.nome,
             data_inicio=orm.data_inicio,
             data_fim=orm.data_fim,
+            cantina_id=orm.cantina_id,
             refeicoes=refeicoes,
         )

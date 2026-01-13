@@ -81,6 +81,40 @@ class UserORM(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    cantina_id = Column(Integer, ForeignKey("cantinas.id"), nullable=True)
+    refeitorio_id = Column(Integer, ForeignKey("refeitorios.id"), nullable=True)
+    
+    cantina = relationship("CantinaORM", foreign_keys=[cantina_id], viewonly=True)
+    refeitorio = relationship("RefeitorioORM", foreign_keys=[refeitorio_id], viewonly=True)
+
+
+class CantinaORM(Base):
+    """Unidade de cantina, podendo ser central ou local."""
+    __tablename__ = "cantinas"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String, nullable=False, unique=True)
+    localizacao = Column(String, nullable=True)
+    tipo = Column(String, default="CENTRAL", nullable=False)  # CENTRAL ou LOCAL
+    gestor_id = Column(Integer, ForeignKey("utilizadores.id"), nullable=True)
+
+    refeitorios = relationship("RefeitorioORM", back_populates="cantina", cascade="all, delete-orphan")
+    ementas = relationship("EmentaORM", back_populates="cantina")
+
+
+class RefeitorioORM(Base):
+    """Refeitório pertencente a uma cantina, com gestor próprio."""
+    __tablename__ = "refeitorios"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nome = Column(String, nullable=False, unique=True)
+    localizacao = Column(String, nullable=True)
+    gestor_id = Column(Integer, ForeignKey("utilizadores.id"), nullable=True)
+    cantina_id = Column(Integer, ForeignKey("cantinas.id"), nullable=True)
+
+    cantina = relationship("CantinaORM", back_populates="refeitorios")
+    execucoes = relationship("ExecucaoRefeicaoORM", back_populates="refeitorio")
+
+
+
 
 
 class ReceitaORM(Base):
@@ -116,8 +150,10 @@ class EmentaORM(Base):
     nome = Column(String, nullable=False)
     data_inicio = Column(Date, nullable=False)
     data_fim = Column(Date, nullable=False)
+    cantina_id = Column(Integer, ForeignKey("cantinas.id"), nullable=True)
     
     refeicoes = relationship("RefeicaoORM", back_populates="ementa", cascade="all, delete-orphan")
+    cantina = relationship("CantinaORM", back_populates="ementas")
 
 
 class RefeicaoORM(Base):
@@ -152,6 +188,7 @@ class ExecucaoRefeicaoORM(Base):
     __tablename__ = "execucoes_refeicao"
     id = Column(Integer, primary_key=True, autoincrement=True)
     refeicao_id = Column(Integer, ForeignKey("refeicoes.id"), nullable=False)
+    refeitorio_id = Column(Integer, ForeignKey("refeitorios.id"), nullable=True)
     data_execucao = Column(Date, nullable=False)
     quantidade_prevista = Column(Integer, nullable=True)  # Previsão do plano de produção
     quantidade_produzida = Column(Integer, nullable=False)  # O que foi efetivamente produzido
@@ -159,6 +196,7 @@ class ExecucaoRefeicaoORM(Base):
     quantidade_nao_servida = Column(Integer, nullable=False)
 
     refeicao = relationship("RefeicaoORM", back_populates="execucoes")
+    refeitorio = relationship("RefeitorioORM", back_populates="execucoes")
 
 # TABELAS PARA APROVISIONAMENTO (REQUISITO 4)
 

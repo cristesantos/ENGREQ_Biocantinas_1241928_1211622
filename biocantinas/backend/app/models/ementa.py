@@ -28,4 +28,5 @@ class EmentaModel:
     nome: str
     data_inicio: date
     data_fim: date
+    cantina_id: int | None = None
     refeicoes: List[RefeicaoModel] = field(default_factory=list)

@@ -49,6 +49,16 @@ def patch_fecho(API_URL, auth_token, nome: str, ativo: bool):
     return r.json()
 
 def pagina_gestor_cantina_central(API_URL, auth_token):
+    # Verificar se user é ADMIN (tem permissão para ver seletores)
+    user_info = st.session_state.get("user_info", {})
+    user_role = str(user_info.get("role", "")).upper()
+    is_admin = user_role == "ADMIN"
+    
+    # Se não for admin, redirect para página restrita
+    if not is_admin:
+        st.error("❌ Acesso negado. Esta página é apenas para administradores.")
+        st.stop()
+    
     # Aumenta fonte das abas via CSS customizado
     st.markdown(
         """

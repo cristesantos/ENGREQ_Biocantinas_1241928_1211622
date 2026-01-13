@@ -17,6 +17,7 @@ class ExecucaoRefeicaoRepo:
             quantidade_produzida=model.quantidade_produzida,
             quantidade_servida=model.quantidade_servida,
             quantidade_nao_servida=model.quantidade_nao_servida,
+            refeitorio_id=model.refeitorio_id,
         )
         self.session.add(orm)
         self.session.commit()
@@ -54,4 +55,5 @@ class ExecucaoRefeicaoRepo:
             quantidade_produzida=orm.quantidade_produzida,
             quantidade_servida=orm.quantidade_servida,
             quantidade_nao_servida=orm.quantidade_nao_servida,
+            refeitorio_id=orm.refeitorio_id,
         )

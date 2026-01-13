@@ -24,6 +24,7 @@ class EmentaCreate(BaseModel):
     nome: str
     data_inicio: date
     data_fim: date
+    cantina_id: int | None = None
     refeicoes: List[Refeicao] = []
 
 

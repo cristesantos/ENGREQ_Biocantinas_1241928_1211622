@@ -293,38 +293,37 @@ class KPIService:
         if not ementa:
             raise ValueError(f"Ementa com ID {ementa_id} não encontrada")
         
-        dias_desp = []
+        dias_desp: list[DesperdicioDiaDTO] = []
         totais_prod = 0
         totais_serv = 0
         totais_nao_serv = 0
-        
-        # Calcular para cada dia da semana (1-5)
+
+        # Agregar desperdício para cada dia da semana (1=Seg a 5=Sex)
         for dia_semana in range(1, 6):
-            try:
-                dia_desp = KPIService.calcular_desperdicio_dia(session, ementa_id, dia_semana)
-                if dia_desp.total_produzido > 0:  # Apenas incluir dias com dados
-                    dias_desp.append(dia_desp)
-                    totais_prod += dia_desp.total_produzido
-                    totais_serv += dia_desp.total_servido
-                    totais_nao_serv += dia_desp.total_nao_servido
-            except:
-                pass
-        
-        taxa_desp_geral = (totais_nao_serv / totais_prod * 100) if totais_prod > 0 else 0.0
-        taxa_serv_geral = (totais_serv / totais_prod * 100) if totais_prod > 0 else 0.0
-        
+            dia_kpi = KPIService.calcular_desperdicio_dia(session, ementa_id, dia_semana)
+            dias_desp.append(dia_kpi)
+            totais_prod += dia_kpi.total_produzido
+            totais_serv += dia_kpi.total_servido
+            totais_nao_serv += dia_kpi.total_nao_servido
+
+        taxa_desperdicio_geral = (
+            (totais_nao_serv / totais_prod * 100) if totais_prod > 0 else 0.0
+        )
+        taxa_servida_geral = (
+            (totais_serv / totais_prod * 100) if totais_prod > 0 else 0.0
+        )
+
         return DesperdicioEmentaDTO(
-            ementa_id=ementa_id,
+            ementa_id=ementa.id,
             ementa_nome=ementa.nome,
             total_produzido=totais_prod,
             total_servido=totais_serv,
             total_nao_servido=totais_nao_serv,
-            taxa_desperdicio_geral=round(taxa_desp_geral, 2),
-            taxa_servida_geral=round(taxa_serv_geral, 2),
-            dias=dias_desp
+            taxa_desperdicio_geral=round(taxa_desperdicio_geral, 2),
+            taxa_servida_geral=round(taxa_servida_geral, 2),
+            dias=dias_desp,
         )
     
-    @staticmethod
     @staticmethod
     def calcular_kpi_consolidado(session: Session, ementa_id: int) -> KPIConsolidadoDTO:
         """
@@ -346,3 +345,167 @@ class KPIService:
             total_servido=kpi_desp.total_servido,
             total_nao_servido=kpi_desp.total_nao_servido
         )
+
+    # ==================== NOVOS MÉTODOS PARA UNIDADES ====================
+    
+    @staticmethod
+    def calcular_kpi_cantina(session: Session, cantina_id: int, data_inicio: date, data_fim: date) -> dict:
+        """
+        Calcula KPIs de uma cantina no período especificado.
+        Métricas: refeições servidas, desperdiçadas, taxa de desperdício, conformidade plano.
+        """
+        from ..db.models import CantinaORM
+        
+        cantina = session.get(CantinaORM, cantina_id)
+        if not cantina:
+            return {"erro": "Cantina não encontrada"}
+
+        # Obter todas as execuções da cantina neste período (através das ementas)
+        execucoes = (
+            session.query(ExecucaoRefeicaoORM)
+            .join(RefeicaoORM, ExecucaoRefeicaoORM.refeicao_id == RefeicaoORM.id)
+            .join(EmentaORM, RefeicaoORM.ementa_id == EmentaORM.id)
+            .filter(EmentaORM.cantina_id == cantina_id)
+            .filter(ExecucaoRefeicaoORM.data_execucao >= data_inicio)
+            .filter(ExecucaoRefeicaoORM.data_execucao <= data_fim)
+            .all()
+        )
+
+        if not execucoes:
+            return {
+                "cantina_id": cantina_id,
+                "cantina_nome": cantina.nome,
+                "tipo": getattr(cantina, "tipo", None),
+                "periodo": {"data_inicio": data_inicio.isoformat(), "data_fim": data_fim.isoformat()},
+                "refeicoes_servidas": 0,
+                "refeicoes_desperdiçadas": 0,
+                "refeicoes_produzidas": 0,
+                "taxa_desperdicio_pct": 0.0,
+                "conformidade_plano_pct": 0.0,
+                "num_dias": (data_fim - data_inicio).days + 1,
+                "num_execucoes": 0,
+                "mensagem": "Sem dados no período"
+            }
+
+        # Cálculos
+        total_servidas = sum(e.quantidade_servida for e in execucoes)
+        total_desperdiçadas = sum(e.quantidade_nao_servida for e in execucoes)
+        total_produzidas = sum(e.quantidade_produzida for e in execucoes)
+        
+        taxa_desperdicio = (
+            (total_desperdiçadas / total_produzidas * 100) 
+            if total_produzidas > 0 else 0.0
+        )
+        
+        # Conformidade: quanto foi servido vs quanto foi planejado
+        total_previstas = sum(e.quantidade_prevista or 0 for e in execucoes)
+        conformidade_plano = (
+            (total_servidas / total_previstas * 100)
+            if total_previstas > 0 else 100.0
+        )
+
+        return {
+            "cantina_id": cantina_id,
+            "cantina_nome": cantina.nome,
+            "tipo": cantina.tipo,
+            "periodo": {"data_inicio": data_inicio.isoformat(), "data_fim": data_fim.isoformat()},
+            "refeicoes_servidas": total_servidas,
+            "refeicoes_desperdiçadas": total_desperdiçadas,
+            "refeicoes_produzidas": total_produzidas,
+            "taxa_desperdicio_pct": round(taxa_desperdicio, 2),
+            "conformidade_plano_pct": round(conformidade_plano, 2),
+            "num_dias": (data_fim - data_inicio).days + 1,
+            "num_execucoes": len(execucoes),
+        }
+
+    @staticmethod
+    def calcular_kpi_refeitorio(session: Session, refeitorio_id: int, data_inicio: date, data_fim: date) -> dict:
+        """
+        Calcula KPIs de um refeitório no período especificado.
+        """
+        from ..db.models import RefeitorioORM
+        
+        ref = session.get(RefeitorioORM, refeitorio_id)
+        if not ref:
+            return {"erro": "Refeitório não encontrado"}
+
+        # Obter execuções específicas deste refeitório
+        execucoes = (
+            session.query(ExecucaoRefeicaoORM)
+            .filter(ExecucaoRefeicaoORM.refeitorio_id == refeitorio_id)
+            .filter(ExecucaoRefeicaoORM.data_execucao >= data_inicio)
+            .filter(ExecucaoRefeicaoORM.data_execucao <= data_fim)
+            .all()
+        )
+
+        if not execucoes:
+            return {
+                "refeitorio_id": refeitorio_id,
+                "refeitorio_nome": ref.nome,
+                "periodo": {"data_inicio": data_inicio.isoformat(), "data_fim": data_fim.isoformat()},
+                "refeicoes_servidas": 0,
+                "refeicoes_desperdiçadas": 0,
+                "refeicoes_produzidas": 0,
+                "taxa_desperdicio_pct": 0.0,
+                "conformidade_plano_pct": 0.0,
+                "num_dias": (data_fim - data_inicio).days + 1,
+                "num_execucoes": 0,
+                "mensagem": "Sem dados no período"
+            }
+
+        # Cálculos (idênticos ao da cantina)
+        total_servidas = sum(e.quantidade_servida for e in execucoes)
+        total_desperdiçadas = sum(e.quantidade_nao_servida for e in execucoes)
+        total_produzidas = sum(e.quantidade_produzida for e in execucoes)
+        
+        taxa_desperdicio = (
+            (total_desperdiçadas / total_produzidas * 100)
+            if total_produzidas > 0 else 0.0
+        )
+        
+        total_previstas = sum(e.quantidade_prevista or 0 for e in execucoes)
+        conformidade_plano = (
+            (total_servidas / total_previstas * 100)
+            if total_previstas > 0 else 100.0
+        )
+
+        return {
+            "refeitorio_id": refeitorio_id,
+            "refeitorio_nome": ref.nome,
+            "periodo": {"data_inicio": data_inicio.isoformat(), "data_fim": data_fim.isoformat()},
+            "refeicoes_servidas": total_servidas,
+            "refeicoes_desperdiçadas": total_desperdiçadas,
+            "refeicoes_produzidas": total_produzidas,
+            "taxa_desperdicio_pct": round(taxa_desperdicio, 2),
+            "conformidade_plano_pct": round(conformidade_plano, 2),
+            "num_dias": (data_fim - data_inicio).days + 1,
+            "num_execucoes": len(execucoes),
+        }
+
+    @staticmethod
+    def calcular_kpi_todas_cantinas(session: Session, data_inicio: date, data_fim: date) -> list:
+        """Retorna KPIs de todas as cantinas no período."""
+        from ..db.models import CantinaORM
+        
+        cantinas = session.query(CantinaORM).all()
+        kpis = []
+        for cantina in cantinas:
+            kpi = KPIService.calcular_kpi_cantina(session, cantina.id, data_inicio, data_fim)
+            if "erro" not in kpi:
+                kpis.append(kpi)
+        return kpis
+
+    @staticmethod
+    def calcular_kpi_todos_refeitorios(session: Session, cantina_id: int, data_inicio: date, data_fim: date) -> list:
+        """Retorna KPIs de todos os refeitórios de uma cantina no período."""
+        from ..db.models import RefeitorioORM
+        
+        refeitorios = session.query(RefeitorioORM).filter(
+            RefeitorioORM.cantina_id == cantina_id
+        ).all()
+        kpis = []
+        for ref in refeitorios:
+            kpi = KPIService.calcular_kpi_refeitorio(session, ref.id, data_inicio, data_fim)
+            if "erro" not in kpi:
+                kpis.append(kpi)
+        return kpis

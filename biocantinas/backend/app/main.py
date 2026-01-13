@@ -8,6 +8,7 @@ from .controllers.execucaoRefeicaoController import router as execucoes_router
 from .controllers.kpiController import router as kpi_router
 from .controllers.receitaController import router as receitas_router
 from .controllers.relatorioController import router as relatorio_router
+from .controllers.unidadesController import router as unidades_router
 
 app = FastAPI(title="BioCantinas - Fornecedores")
 
@@ -25,3 +26,4 @@ app.include_router(execucoes_router, prefix="")
 app.include_router(kpi_router, prefix="")
 app.include_router(receitas_router, prefix="")
 app.include_router(relatorio_router, prefix="")
+app.include_router(unidades_router, prefix="")

@@ -11,3 +11,4 @@ class ExecucaoRefeicaoModel:
     quantidade_produzida: int = 0
     quantidade_servida: int = 0
     quantidade_nao_servida: int = 0
+    refeitorio_id: int | None = None
